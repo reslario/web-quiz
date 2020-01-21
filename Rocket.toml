@@ -1,0 +1,5 @@
+[development]
+template_dir = "content/public/html/templates/"
+
+[production]
+template_dir = "content/public/html/templates/"

@@ -1,0 +1,5 @@
+/target
+**/*.rs.bk
+.idea
+Qxide.iml
+cmake-build-debug/CMakeFiles/clion-log.txt
