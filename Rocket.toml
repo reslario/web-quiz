@@ -1,5 +1,2 @@
-[development]
-template_dir = "content/public/html/templates/"
-
-[production]
+[global]
 template_dir = "content/public/html/templates/"
