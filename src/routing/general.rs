@@ -1,10 +1,11 @@
-use std::path::{PathBuf, Path};
-use rocket::{
-    get,
-    uri,
-    response::NamedFile
+use {
+    once_cell::sync::Lazy,
+    std::path::{PathBuf, Path},
+    rocket::{
+        get,
+        response::NamedFile
+    }
 };
-use once_cell::sync::Lazy;
 
 const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 static STATIC_CONTENT_PATH: Lazy<PathBuf> = Lazy::new(static_content_path);
