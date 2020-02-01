@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS question_stats;
+DROP TABLE IF EXISTS questions;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS scores;

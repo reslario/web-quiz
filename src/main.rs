@@ -1,9 +1,16 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use rocket::{routes, get};
-use rocket_contrib::templates::Template;
+// auto-generated schema.rs file won't compile without this
+#[macro_use] extern crate diesel;
+
+use {
+    rocket::routes,
+    rocket_contrib::templates::Template
+};
+use diesel::Connection;
 
 mod routing;
+mod models;
 
 fn main() {
     rocket::ignite()
