@@ -21,5 +21,6 @@ fn main() {
             routing::favicon
         ])
         .attach(Template::fairing())
+        .attach(models::db::DbConn::fairing())
         .launch();
 }

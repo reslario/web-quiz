@@ -1,2 +1,5 @@
 [global]
 template_dir = "content/public/html/templates/"
+
+[global.databases]
+db = { url = "postgres://test:test@localhost:5432/web_quiz_test" }
