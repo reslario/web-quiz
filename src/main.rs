@@ -3,14 +3,13 @@
 // auto-generated schema.rs file won't compile without this
 #[macro_use] extern crate diesel;
 
+mod routing;
+mod models;
+
 use {
     rocket::routes,
     rocket_contrib::templates::Template
 };
-use diesel::Connection;
-
-mod routing;
-mod models;
 
 fn main() {
     rocket::ignite()
@@ -22,5 +21,6 @@ fn main() {
         ])
         .attach(Template::fairing())
         .attach(models::db::DbConn::fairing())
+        .manage(models::web::init_game_states())
         .launch();
 }
