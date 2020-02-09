@@ -7,7 +7,7 @@ mod routing;
 mod models;
 
 use {
-    rocket::routes,
+    rocket::{routes, catchers},
     rocket_contrib::templates::Template
 };
 
@@ -25,6 +25,9 @@ fn main() {
             routing::pages::answer,
             routing::pages::continue_game,
             routing::pages::end_game
+        ])
+        .register(catchers![
+            routing::catchers::unauthorized
         ])
         .attach(Template::fairing())
         .attach(models::db::DbConn::fairing())
