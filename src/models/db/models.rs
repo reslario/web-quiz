@@ -42,4 +42,84 @@ pub struct Score {
     pub name: String,
     pub points: i32
 }
+
+pub use {
+    load::*,
+    insert::*
+};
+
+mod load {
+    use {
+        super::NUM_INCORRECT,
+        diesel::{
+            Queryable,
+            backend::Backend
+        }
+    };
+
+    #[derive(PartialEq, Debug)]
+    pub struct Incorrect([String; NUM_INCORRECT]);
+
+    impl Into<[String; NUM_INCORRECT]> for Incorrect {
+        fn into(self) -> [String; NUM_INCORRECT] {
+            self.0
+        }
+    }
+
+    impl <DB, ST> Queryable<ST, DB> for Incorrect
+        where
+            DB: Backend,
+            Vec<String>: Queryable<ST, DB>,
+    {
+        type Row = <Vec<String> as Queryable<ST, DB>>::Row;
+
+        fn build(row: Self::Row) -> Self {
+            let mut answers = Vec::build(row)
+                .into_iter();
+            let mut next_answer = || answers
+                .next()
+                .unwrap_or_default();
+            Incorrect([
+                next_answer(),
+                next_answer(),
+                next_answer()
+            ])
+        }
+    }
+
+}
+
+mod insert {
+    use {
+        super::*,
+        diesel::Insertable
+    };
+
+    #[derive(Insertable, Debug, PartialEq, PartialOrd, Clone)]
+    #[table_name = "questions"]
+    pub struct NewQuestion<'a> {
+        pub category_id: i32,
+        pub string: &'a str,
+        pub correct: &'a str,
+        pub incorrect: &'a [String]
+    }
+
+    #[derive(Insertable, Debug, PartialEq, PartialOrd, Clone)]
+    #[table_name = "question_stats"]
+    pub struct NewQuestionStats {
+        pub question_id: i32,
+    }
+
+    #[derive(Insertable, Debug, PartialEq, PartialOrd, Clone)]
+    #[table_name = "categories"]
+    pub struct NewCategory<'a> {
+        pub name: &'a str
+    }
+
+    #[derive(Insertable, Debug, PartialEq, PartialOrd, Clone)]
+    #[table_name = "scores"]
+    pub struct NewScore<'a> {
+        pub name: &'a str,
+        pub points: i32
+    }
 }
