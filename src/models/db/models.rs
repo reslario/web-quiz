@@ -1,4 +1,5 @@
 use {
+    serde::Serialize,
     diesel::{Identifiable, Queryable, Associations},
     super::schema::{questions, question_stats, categories, scores}
 };
@@ -28,14 +29,14 @@ pub struct QuestionStats {
     pub num_incorrect: i32
 }
 
-#[derive(Identifiable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Queryable, Serialize, PartialEq, Debug)]
 #[table_name = "categories"]
 pub struct Category {
     pub(super) id: i32,
     pub name: String
 }
 
-#[derive(Identifiable, Queryable, PartialEq, Debug)]
+#[derive(Identifiable, Queryable, Serialize, PartialEq, Debug)]
 #[table_name = "scores"]
 pub struct Score {
     pub(super) id: i32,
