@@ -5,6 +5,8 @@ use rand::{
     thread_rng,
     seq::SliceRandom
 };
+use std::iter::Sum;
+use crate::routing::Answer;
 
 #[derive(Debug, Default)]
 pub struct GameState {
@@ -56,4 +58,14 @@ impl GameState {
     pub fn use_joker(&mut self) {
         self.joker = false
     }
+}
+
+pub fn pseudo_shuffle(items: &mut [Answer])
+{
+    items.sort_by_cached_key(|a| a.string
+        .chars()
+        .map(|c| c as usize)
+        .sum::<usize>()
+        / a.string.len().min(1)
+    )
 }

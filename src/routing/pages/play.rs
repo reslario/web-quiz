@@ -4,7 +4,10 @@ use {
     rocket_contrib::templates::Template,
     rand::{
         thread_rng,
-        seq::SliceRandom
+        seq::{
+            SliceRandom,
+            index::sample
+        }
     },
     rocket::{
         get,
@@ -15,7 +18,7 @@ use {
         response::Redirect,
     },
     crate::models::{
-        game::GameState,
+        game::{GameState, pseudo_shuffle},
         web::{NewSession, NewGameState, MutSyncedGameState, Or500, EndSession, SyncedGameState},
         db::{
             DbConn,
@@ -27,10 +30,16 @@ use {
 #[derive(Serialize)]
 struct DisplayData<'a> {
     question: &'a str,
-    answers: Vec<&'a str>,
+    answers: Vec<Answer<'a>>,
     category: &'a str,
     points: i32,
     joker: bool
+}
+
+#[derive(Serialize)]
+pub struct Answer<'a> {
+    pub string: &'a str,
+    disabled: bool
 }
 
 impl <'a> DisplayData<'a> {
@@ -40,8 +49,9 @@ impl <'a> DisplayData<'a> {
             .iter()
             .map(String::as_str)
             .chain(std::iter::once(question.correct.as_str()))
+            .map(|string| Answer { string, disabled: false })
             .collect::<Vec<_>>();
-        answers.shuffle(&mut thread_rng());
+        pseudo_shuffle(&mut answers);
 
         DisplayData {
             question: &question.string,
@@ -50,6 +60,19 @@ impl <'a> DisplayData<'a> {
             points,
             joker
         }
+    }
+
+    pub fn apply_joker(&mut self, correct: &str) {
+        let indices = sample(&mut thread_rng(), 3, 2);
+            self.answers
+                .iter_mut()
+                .filter(|a| a.string != correct)
+                .enumerate()
+                .filter(|(i, a)| indices
+                    .iter()
+                    .find(|id| id == i)
+                    .is_some()
+                ).for_each(|(i, a)| a.disabled = true)
     }
 }
 
@@ -83,12 +106,12 @@ pub fn new_game(settings: Form<Settings>, _sess: NewSession, new_game_state: New
 }
 
 #[derive(FromForm, Debug)]
-pub struct Answer {
+pub struct Response {
     answer: String
 }
 
 #[post("/answer", data = "<answer>")]
-pub fn answer(answer: Form<Answer>, game_state: MutSyncedGameState) -> Redirect {
+pub fn answer(answer: Form<Response>, game_state: MutSyncedGameState) -> Redirect {
     if game_state.current_question
         .as_ref()
         .map(|q| q.correct == answer.answer)
