@@ -31,14 +31,14 @@ pub fn favicon() -> std::io::Result<NamedFile> {
     static_content("favicon.ico".into())
 }
 
-#[get("/content/static/<path..>", rank = 0)]
+#[get("/content/static/<path..>", rank = 98)]
 pub fn static_content(path: PathBuf) -> std::io::Result<NamedFile> {
     NamedFile::open(
         STATIC_CONTENT_PATH.join(path)
     )
 }
 
-#[get("/<path..>", rank = 1)]
+#[get("/<path..>", rank = 99)]
 pub fn static_page(path: PathBuf) -> std::io::Result<NamedFile> {
     let mut path = STATIC_PAGE_PATH.join(path);
     path.set_extension("html");
