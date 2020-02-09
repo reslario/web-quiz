@@ -19,7 +19,12 @@ fn main() {
             routing::index,
             routing::static_page,
             routing::static_content,
-            routing::favicon
+            routing::favicon,
+            routing::pages::settings,
+            routing::pages::new_game,
+            routing::pages::answer,
+            routing::pages::continue_game,
+            routing::pages::end_game
         ])
         .attach(Template::fairing())
         .attach(models::db::DbConn::fairing())

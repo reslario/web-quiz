@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Play</title>
+</head>
+<body>
+<span>{{ category }}</span>
+<p>{{ question }}</p>
+<form method="post" action="/answer">
+{% for ans in answers -%}
+<button type="submit" name="answer" value="{{ ans }}">{{ ans }}</button>
+{%- endfor %}
+</form>
+<span>{{ points }}</span>
+{% if joker -%}
+<button>use joker</button>
+{%- endif %}
+</body>
+</html>

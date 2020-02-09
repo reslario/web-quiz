@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Start</title>
+</head>
+<body>
+<form method="post" action="/new_game">
+    <input type="text" name="user" value="{{ user }}" readonly>
+    <select multiple name="categories">
+        {% for cat in categories -%}
+        <option value="{{ cat.id }}">{{ cat.name }}</option>
+        {%- endfor %}
+    </select>
+    <button type="submit">Spielen</button>
+</form>
+</body>
+</html>
