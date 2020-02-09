@@ -12,6 +12,8 @@ use {
 };
 
 fn main() {
+    dotenv::dotenv().ok();
+
     rocket::ignite()
         .mount("/", routes![
             routing::index,
