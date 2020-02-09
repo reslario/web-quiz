@@ -17,8 +17,8 @@ CREATE TABLE question_stats
 (
     id            SERIAL PRIMARY KEY,
     question_id   INTEGER NOT NULL REFERENCES questions (id),
-    num_correct   INTEGER NOT NULL,
-    num_incorrect INTEGER NOT NULL
+    num_correct   INTEGER NOT NULL DEFAULT 0,
+    num_incorrect INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE scores
