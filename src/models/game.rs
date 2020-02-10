@@ -5,7 +5,6 @@ use rand::{
     thread_rng,
     seq::SliceRandom
 };
-use std::iter::Sum;
 use crate::routing::Answer;
 
 #[derive(Debug, Default)]
@@ -30,7 +29,6 @@ impl GameState {
 
     pub fn next_question(&mut self) -> Option<(&Category, &Question)> {
         self.current_question = self.questions.pop_front();
-        let categories = &self.categories;
         self.current_question()
     }
 
@@ -59,10 +57,16 @@ impl GameState {
         self.points += 30
     }
 
-    pub fn use_joker(&mut self) {
-        self.joker = false
+    pub fn use_joker(&mut self) -> Result<(), AlreadyUsed> {
+        if !self.joker {
+            Err(AlreadyUsed)
+        } else {
+            Ok(self.joker = false)
+        }
     }
 }
+
+pub struct AlreadyUsed;
 
 pub fn pseudo_shuffle(items: &mut [Answer]) {
     items.sort_by_cached_key(|a| a.string

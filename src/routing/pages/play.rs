@@ -183,7 +183,10 @@ pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
 
 #[get("/use_joker")]
 pub fn use_joker(mut game_state: MutSyncedGameState) -> Result<Template, Status> {
-    game_state.use_joker();
+    let allowed = match game_state.use_joker() {
+        Ok(()) => true,
+        Err(AlreadyUsed) => false
+    };
     let (cat, q) = game_state.current_question().or_500()?;
 
     let mut display_data = DisplayData::new(
@@ -192,7 +195,10 @@ pub fn use_joker(mut game_state: MutSyncedGameState) -> Result<Template, Status>
         game_state.points,
         false
     );
-    display_data.apply_joker(&q.correct);
+
+    if allowed {
+        display_data.apply_joker(&q.correct)
+    }
 
     Ok(Template::render("play", display_data))
 }
