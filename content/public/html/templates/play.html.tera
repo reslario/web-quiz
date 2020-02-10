@@ -9,12 +9,17 @@
 <p>{{ question }}</p>
 <form method="post" action="/answer">
 {% for ans in answers -%}
-<button type="submit" name="answer" value="{{ ans }}">{{ ans }}</button>
+<button type="submit" name="answer"
+        {% if ans.disabled %}
+        disabled
+        {% endif %}
+        value="{{ ans.string }}">{{ ans.string }}
+</button>
 {%- endfor %}
 </form>
 <span>{{ points }}</span>
 {% if joker -%}
-<button>use joker</button>
+<a href="/use_joker">use joker</a>
 {%- endif %}
 </body>
 </html>

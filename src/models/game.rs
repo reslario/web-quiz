@@ -31,9 +31,13 @@ impl GameState {
     pub fn next_question(&mut self) -> Option<(&Category, &Question)> {
         self.current_question = self.questions.pop_front();
         let categories = &self.categories;
+        self.current_question()
+    }
+
+    pub fn current_question(&self) -> Option<(&Category, &Question)> {
         self.current_question
             .as_ref()
-            .and_then(|q| categories
+            .and_then(|q| self.categories
                 .iter()
                 .find(|cat| q.is_of_category(cat))
                 .map(|cat| (cat, q))
@@ -60,12 +64,11 @@ impl GameState {
     }
 }
 
-pub fn pseudo_shuffle(items: &mut [Answer])
-{
+pub fn pseudo_shuffle(items: &mut [Answer]) {
     items.sort_by_cached_key(|a| a.string
         .chars()
         .map(|c| c as usize)
         .sum::<usize>()
-        / a.string.len().min(1)
+        / a.string.len().max(1)
     )
 }

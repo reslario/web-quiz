@@ -24,7 +24,8 @@ fn main() {
             routing::pages::new_game,
             routing::pages::answer,
             routing::pages::continue_game,
-            routing::pages::end_game
+            routing::pages::end_game,
+            routing::pages::use_joker
         ])
         .register(catchers![
             routing::catchers::unauthorized

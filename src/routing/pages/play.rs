@@ -176,3 +176,19 @@ pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
         top_three: &top_three
     }))
 }
+
+#[get("/use_joker")]
+pub fn use_joker(mut game_state: MutSyncedGameState) -> Result<Template, Status> {
+    game_state.use_joker();
+    let (cat, q) = game_state.current_question().or_500()?;
+
+    let mut display_data = DisplayData::new(
+        q,
+        &cat.name,
+        game_state.points,
+        false
+    );
+    display_data.apply_joker(&q.correct);
+
+    Ok(Template::render("play", display_data))
+}
