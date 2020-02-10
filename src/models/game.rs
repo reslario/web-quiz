@@ -1,11 +1,15 @@
-use crate::models::db::models::{Question, Category};
-use std::collections::VecDeque;
-use diesel::{PgConnection, QueryResult};
-use rand::{
-    thread_rng,
-    seq::SliceRandom
+use {
+    std::collections::VecDeque,
+    diesel::{PgConnection, QueryResult},
+    rand::{
+        thread_rng,
+        seq::SliceRandom
+    },
+    crate::{
+        routing::Answer,
+        models::db::models::{Question, Category}
+    }
 };
-use crate::routing::Answer;
 
 #[derive(Debug, Default)]
 pub struct GameState {
