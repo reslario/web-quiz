@@ -4,10 +4,7 @@ use {
     rocket_contrib::templates::Template,
     rand::{
         thread_rng,
-        seq::{
-            SliceRandom,
-            index::sample
-        }
+        seq::index::sample
     },
     rocket::{
         get,
@@ -18,8 +15,8 @@ use {
         response::Redirect,
     },
     crate::models::{
-        game::{GameState, pseudo_shuffle},
-        web::{NewSession, NewGameState, MutSyncedGameState, Or500, SyncedGameState, EndGame},
+        game::{GameState, AlreadyUsed, pseudo_shuffle},
+        web::{NewSession, NewGameState, MutSyncedGameState, Or500, EndGame},
         db::{
             DbConn,
             models::{Category, Question, Score, NewScore}
@@ -68,11 +65,11 @@ impl <'a> DisplayData<'a> {
                 .iter_mut()
                 .filter(|a| a.string != correct)
                 .enumerate()
-                .filter(|(i, a)| indices
+                .filter(|(i, _)| indices
                     .iter()
                     .find(|id| id == i)
                     .is_some()
-                ).for_each(|(i, a)| a.disabled = true)
+                ).for_each(|(_, a)| a.disabled = true)
     }
 }
 
@@ -110,22 +107,29 @@ pub struct Response {
     answer: String
 }
 
-#[post("/answer", data = "<answer>")]
-pub fn answer(answer: Form<Response>, game_state: MutSyncedGameState) -> Redirect {
-    if game_state.current_question
+#[post("/answer", data = "<response>")]
+pub fn answer(response: Form<Response>, mut game_state: MutSyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
+    let cq = game_state
+        .current_question
         .as_ref()
-        .map(|q| q.correct == answer.answer)
-        .unwrap_or_default()
-    {
-        Redirect::to("/play")
+        .or_500()?;
+    if response.answer == cq.correct {
+        cq.stats()
+            .add_correct(&*conn)
+            .or_500()?;
+        drop(cq);
+        game_state.increment_points();
+        Ok(Redirect::to("/play"))
     } else {
-        Redirect::to("/end")
+        cq.stats()
+            .add_incorrect(&*conn)
+            .or_500()?;
+        Ok(Redirect::to("/end"))
     }
 }
 
 #[get("/play")]
 pub fn continue_game(mut game_state: MutSyncedGameState, conn: DbConn) -> Result<Template, Status> {
-    game_state.increment_points();
     let (points, joker) = (game_state.points, game_state.joker);
     let (cat, next_q) = match game_state.next_question() {
         Some(v) => v,

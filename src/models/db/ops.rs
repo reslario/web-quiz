@@ -1,11 +1,14 @@
 use {
     diesel::{
+        update,
         insert_into,
         PgConnection,
         RunQueryDsl,
         prelude::*,
+        pg::Pg,
         result::QueryResult,
-        expression::dsl::any
+        expression::dsl::any,
+        query_builder::{AsChangeset, QueryFragment}
     },
     crate::models::db::{
         schema,
@@ -58,6 +61,52 @@ impl Question {
         Question::belonging_to(categories)
             .limit(100)
             .load(conn)
+    }
+
+    pub fn stats(&self) -> Stats {
+        Stats {
+            question: self
+        }
+    }
+}
+
+pub struct Stats<'a> {
+    question: &'a Question
+}
+
+impl <'a> Stats<'a> {
+    pub fn load(&self, conn: &PgConnection) -> QueryResult<QuestionStats> {
+        QuestionStats::belonging_to(self.question)
+            .get_result(conn)
+    }
+
+    pub fn add_correct(&self, conn: &PgConnection) -> QueryResult<()> {
+        use schema::question_stats::dsl::*;
+
+        self.update_stat(
+            num_correct.eq(num_correct + 1),
+            conn
+        )
+    }
+
+    pub fn add_incorrect(&self, conn: &PgConnection) -> QueryResult<()> {
+        use schema::question_stats::dsl::*;
+
+        self.update_stat(
+            num_incorrect.eq(num_incorrect + 1),
+            conn
+        )
+    }
+
+    fn update_stat<V>(&self, expr: V, conn: &PgConnection) -> QueryResult<()>
+    where
+        V: AsChangeset<Target = schema::question_stats::table>,
+        <V as AsChangeset>::Changeset: QueryFragment<Pg>
+    {
+        update(QuestionStats::belonging_to(self.question))
+            .set(expr)
+            .execute(conn)
+            .map(drop)
     }
 }
 
