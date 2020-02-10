@@ -149,22 +149,25 @@ impl <'a, 'r> FromRequest<'a, 'r> for NewSession {
 }
 
 #[derive(Debug)]
-pub struct EndSession;
+pub struct EndGame {
+    pub game_state: GameState
+}
 
-impl <'a, 'r> FromRequest<'a, 'r> for EndSession {
+impl <'a, 'r> FromRequest<'a, 'r> for EndGame {
     type Error = ();
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
-        request
+        let end_game = request
             .guard::<Session>()
             .map(|sess| {
                 request.guard::<State<SyncedGameStates>>()
-                    .and_then(|state| state
+                    .and_then(|states| states
                         .lock()
-                        .map(|mut state| state
+                        .map(|mut states| states
                             .remove(&sess)
-                            .map(drop)
                         ).map_err(drop)
+                        .and_then(|state| state.ok_or(()))
+                        .map(|game_state| EndGame { game_state })
                         .into_outcome(Status::InternalServerError)
                     )
             })?;
@@ -172,7 +175,8 @@ impl <'a, 'r> FromRequest<'a, 'r> for EndSession {
         request
             .cookies()
             .remove_private(Cookie::named(SESSION_COOKIE));
-        Outcome::Success(EndSession)
+
+        end_game
     }
 }
 

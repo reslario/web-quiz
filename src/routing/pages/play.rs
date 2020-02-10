@@ -19,7 +19,7 @@ use {
     },
     crate::models::{
         game::{GameState, pseudo_shuffle},
-        web::{NewSession, NewGameState, MutSyncedGameState, Or500, EndSession, SyncedGameState},
+        web::{NewSession, NewGameState, MutSyncedGameState, Or500, SyncedGameState, EndGame},
         db::{
             DbConn,
             models::{Category, Question, Score, NewScore}
@@ -155,11 +155,11 @@ struct Results<'a> {
 }
 
 #[get("/end")]
-pub fn end_game(game_state: SyncedGameState, conn: DbConn, _sess: EndSession) -> Result<Template, Status> {
+pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
     let score = Score::insert(
         &NewScore {
-            name: &game_state.user,
-            points: game_state.points
+            name: &end.game_state.user,
+            points: end.game_state.points
         },
         &*conn
     ).or_500()?;
