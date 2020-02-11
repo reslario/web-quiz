@@ -1,4 +1,5 @@
 use {
+    std::ops::{Add, Div},
     diesel::{
         update,
         insert_into,
@@ -107,6 +108,16 @@ impl <'a> Stats<'a> {
             .set(expr)
             .execute(conn)
             .map(drop)
+    }
+}
+
+impl QuestionStats {
+    pub fn correct_ratio(&self) -> u8 {
+        self.num_correct
+            .div(self.num_incorrect
+                .add(self.num_correct)
+                .max(1)
+            ) as u8
     }
 }
 

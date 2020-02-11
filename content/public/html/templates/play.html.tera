@@ -21,5 +21,6 @@
 {% if joker -%}
 <a href="/use_joker">use joker</a>
 {%- endif %}
+<p>Diese Frage wird zu {{ ratio }}% richtig beantwortet.</p>
 </body>
 </html>

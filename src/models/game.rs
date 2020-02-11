@@ -80,3 +80,10 @@ pub fn pseudo_shuffle(items: &mut [Answer]) {
         / a.string.len().max(1)
     )
 }
+
+pub fn correct_ratio(question: &Question, conn: &PgConnection) -> QueryResult<u8> {
+    question
+        .stats()
+        .load(conn)
+        .map(|stats| stats.correct_ratio())
+}
