@@ -16,7 +16,7 @@ use {
     },
     crate::models::{
         game::{GameState, AlreadyUsed, pseudo_shuffle},
-        web::{NewSession, NewGameState, MutSyncedGameState, Or500, EndGame},
+        web::{NewSession, NewGameState, SyncedGameState, Or500, EndGame},
         db::{
             DbConn,
             models::{Category, Question, Score, NewScore}
@@ -95,7 +95,7 @@ pub struct Response {
 }
 
 #[post("/answer", data = "<response>")]
-pub fn answer(response: Form<Response>, mut game_state: MutSyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
+pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
     let cq = game_state
         .current_question
         .as_ref()
@@ -116,7 +116,7 @@ pub fn answer(response: Form<Response>, mut game_state: MutSyncedGameState, conn
 }
 
 #[get("/play")]
-pub fn continue_game(mut game_state: MutSyncedGameState, conn: DbConn) -> Result<Template, Status> {
+pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
     let (points, joker) = (game_state.points, game_state.joker);
     let (cat, next_q) = match game_state.next_question() {
         Some(v) => v,
@@ -173,7 +173,7 @@ pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
 }
 
 #[get("/use_joker")]
-pub fn use_joker(mut game_state: MutSyncedGameState, conn: DbConn) -> Result<Template, Status> {
+pub fn use_joker(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
     let allowed = match game_state.use_joker() {
         Ok(()) => true,
         Err(AlreadyUsed) => false

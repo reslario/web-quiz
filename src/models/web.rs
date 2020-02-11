@@ -1,11 +1,11 @@
 use {
     uuid::Uuid,
+    owning_ref::MutexGuardRefMut,
     crate::models::game::GameState,
     derive_more::{Deref, DerefMut},
-    owning_ref::{MutexGuardRef, MutexGuardRefMut},
     std::{
         collections::HashMap,
-        sync::{Arc, Mutex, MutexGuard}
+        sync::{Arc, Mutex}
     },
     rocket::{
         State,
@@ -53,10 +53,7 @@ type GameStates = HashMap<Session, GameState>;
 type SyncedGameStates = Arc<Mutex<GameStates>>;
 
 #[derive(Debug, Deref, DerefMut)]
-pub struct SyncedGameState<'a>(MutexGuardRef<'a, GameStates, GameState>);
-
-#[derive(Debug, Deref, DerefMut)]
-pub struct MutSyncedGameState<'a>(MutexGuardRefMut<'a, GameStates, GameState>);
+pub struct SyncedGameState<'a>(MutexGuardRefMut<'a, GameStates, GameState>);
 
 pub fn init_game_states() -> SyncedGameStates {
     Arc::new(Mutex::new(HashMap::new()))
@@ -66,44 +63,25 @@ impl <'a, 'r> FromRequest<'a, 'r> for SyncedGameState<'a> {
     type Error = ();
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
-        state_from_request(request, |states, sess| MutexGuardRef::new(states)
-            .try_map(|states| states
-                .get(&sess)
-                .ok_or(())
-            ).map(SyncedGameState)
-        )
-    }
-}
-
-impl <'a, 'r> FromRequest<'a, 'r> for MutSyncedGameState<'a> {
-    type Error = ();
-
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
-        state_from_request(request, |states, sess| MutexGuardRefMut::new(states)
-            .try_map_mut(|states| states
-                .get_mut(&sess)
-                .ok_or(())
-            ).map(MutSyncedGameState)
-        )
-    }
-}
-
-fn state_from_request<'a, 'r, T, F>(request: &'a Request<'r>, map: F) -> request::Outcome<T, ()>
-where F: FnOnce(MutexGuard<'a, GameStates>, Session) -> Result<T, ()> {
-    request
-        .guard::<Session>()
-        .map_failure(|_| (Status::Unauthorized, ()))
-        .and_then(|sess| request
-            .guard::<State<SyncedGameStates>>()
-            .map_failure(|_| (Status::ServiceUnavailable, ()))
-            .and_then(|states| states
-                .inner()
-                .lock()
-                .map_err(drop)
-                .and_then(|guard| map(guard, sess))
-                .into_outcome(Status::ServiceUnavailable)
+        request
+            .guard::<Session>()
+            .map_failure(|_| (Status::Unauthorized, ()))
+            .and_then(|sess| request
+                .guard::<State<SyncedGameStates>>()
+                .map_failure(|_| (Status::ServiceUnavailable, ()))
+                .and_then(|states| states
+                    .inner()
+                    .lock()
+                    .map_err(drop)
+                    .and_then(|guard| MutexGuardRefMut::new(guard)
+                        .try_map_mut(|states| states
+                            .get_mut(&sess)
+                            .ok_or(())
+                        ).map(SyncedGameState)
+                    ).into_outcome(Status::ServiceUnavailable)
+                )
             )
-        )
+    }
 }
 
 pub struct NewGameState {
