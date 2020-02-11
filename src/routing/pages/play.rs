@@ -74,32 +74,16 @@ impl <'a> DisplayData<'a> {
 }
 
 #[post("/new_game", data = "<settings>")]
-pub fn new_game(settings: Form<Settings>, _sess: NewSession, new_game_state: NewGameState, conn: DbConn) -> Result<Template, Status> {
+pub fn new_game(settings: Form<Settings>, _sess: NewSession, new_game_state: NewGameState, conn: DbConn) -> Result<Redirect, Status> {
     let categories = Category::load_with_ids(&settings.categories, &*conn)
         .or_500()?;
 
-    let mut game_state = GameState::new(
+    new_game_state.set(GameState::new(
         settings.0.user,
         categories,
-    );
-
-    game_state.load_more_questions(&*conn)
-        .or_500()?;
-    let (points, joker) = (game_state.points, game_state.joker);
-    let (cat, next_q) = game_state
-        .next_question()
-        .or_500()?;
-
-    let response = Template::render("play", DisplayData::new(
-        next_q,
-        &cat.name,
-        points,
-        joker
     ));
 
-    new_game_state.set(game_state);
-
-    Ok(response)
+    Ok(Redirect::to("/play"))
 }
 
 #[derive(FromForm, Debug)]
