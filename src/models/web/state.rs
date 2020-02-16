@@ -7,7 +7,7 @@ use {
     },
     std::{
         collections::HashMap,
-        sync::{Arc, Mutex}
+        sync::Mutex,
     },
     rocket::{
         State,
@@ -19,13 +19,13 @@ use {
 };
 
 type GameStates = HashMap<Session, GameState>;
-type SyncedGameStates = Arc<Mutex<GameStates>>;
+type SyncedGameStates = Mutex<GameStates>;
 
 #[derive(Debug, Deref, DerefMut)]
 pub struct SyncedGameState<'a>(MutexGuardRefMut<'a, GameStates, GameState>);
 
 pub fn init_game_states() -> SyncedGameStates {
-    Arc::new(Mutex::new(HashMap::new()))
+    Mutex::new(HashMap::new())
 }
 
 impl <'a, 'r> FromRequest<'a, 'r> for SyncedGameState<'a> {
@@ -53,12 +53,12 @@ impl <'a, 'r> FromRequest<'a, 'r> for SyncedGameState<'a> {
     }
 }
 
-pub struct NewGameState {
+pub struct NewGameState<'a> {
     session: Session,
-    game_states: Arc<Mutex<GameStates>>
+    game_states: &'a SyncedGameStates
 }
 
-impl NewGameState {
+impl <'a> NewGameState<'a> {
     pub fn set(self, state: GameState) {
         if let Ok(mut states) = self.game_states.lock() {
             states.insert(self.session, state);
@@ -66,7 +66,7 @@ impl NewGameState {
     }
 }
 
-impl <'a, 'r> FromRequest<'a, 'r> for NewGameState {
+impl <'a, 'r> FromRequest<'a, 'r> for NewGameState<'a> {
     type Error = ();
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
@@ -75,7 +75,7 @@ impl <'a, 'r> FromRequest<'a, 'r> for NewGameState {
             game_states: request
                 .guard::<State<SyncedGameStates>>()
                 .map_failure(|_| (Status::ServiceUnavailable, ()))
-                .map(|states| Arc::clone(&*states))?
+                .map(|state| state.inner())?
         })
     }
 }
