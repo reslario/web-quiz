@@ -166,6 +166,22 @@ impl Admin {
     }
 }
 
+impl <'a> NewQuestion<'a> {
+    pub fn with_category(
+        category: &Category,
+        string: &'a str,
+        correct: &'a str,
+        incorrect: &'a [String]
+    ) -> NewQuestion<'a> {
+        NewQuestion {
+            category_id: category.id,
+            string,
+            correct,
+            incorrect
+        }
+    }
+}
+
 macro_rules! impl_insert {
     ($vis:vis, $name:ident, $new:ident, $table:ident) => {
         impl $name {
