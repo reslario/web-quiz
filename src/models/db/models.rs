@@ -1,7 +1,7 @@
 use {
     serde::Serialize,
     diesel::{Identifiable, Queryable, Associations},
-    super::schema::{questions, question_stats, categories, scores}
+    super::schema::{questions, question_stats, categories, scores, admins}
 };
 
 const NUM_ANSWERS: usize = 4;
@@ -42,6 +42,14 @@ pub struct Score {
     pub(super) id: i32,
     pub name: String,
     pub points: i32
+}
+
+#[derive(Identifiable, Queryable, PartialEq, Debug)]
+#[table_name = "admins"]
+pub struct Admin {
+    pub(super) id: i32,
+    pub name: String,
+    pub password: String
 }
 
 pub use {
@@ -122,5 +130,12 @@ mod insert {
     pub struct NewScore<'a> {
         pub name: &'a str,
         pub points: i32
+    }
+
+    #[derive(Insertable, Debug, PartialEq, PartialOrd, Clone)]
+    #[table_name = "admins"]
+    pub struct NewAdmin<'a> {
+        pub name: &'a str,
+        pub password: &'a str
     }
 }

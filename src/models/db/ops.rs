@@ -1,5 +1,9 @@
 use {
     std::ops::{Add, Div},
+    crate::models::db::{
+        schema,
+        models::*
+    },
     diesel::{
         update,
         insert_into,
@@ -10,15 +14,6 @@ use {
         result::QueryResult,
         expression::dsl::any,
         query_builder::{AsChangeset, QueryFragment}
-    },
-    crate::models::db::{
-        schema,
-        models::{
-            Question, NewQuestion,
-            QuestionStats, NewQuestionStats,
-            Category, NewCategory,
-            Score, NewScore
-        }
     }
 };
 
@@ -160,6 +155,17 @@ impl Score {
     }
 }
 
+impl Admin {
+    pub fn named(named: &str, conn: &PgConnection) -> QueryResult<Option<Admin>> {
+        use schema::admins::dsl::*;
+
+        admins
+            .filter(name.eq(named))
+            .first(conn)
+            .optional()
+    }
+}
+
 macro_rules! impl_insert {
     ($vis:vis, $name:ident, $new:ident, $table:ident) => {
         impl $name {
@@ -182,3 +188,5 @@ impl_insert!(QuestionStats, NewQuestionStats, question_stats);
 impl_insert!(pub, Category, NewCategory, categories);
 
 impl_insert!(pub, Score, NewScore, scores);
+
+impl_insert!(pub, Admin, NewAdmin, admins);

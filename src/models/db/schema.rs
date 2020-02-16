@@ -1,4 +1,12 @@
 table! {
+    admins (id) {
+        id -> Int4,
+        name -> Text,
+        password -> Text,
+    }
+}
+
+table! {
     categories (id) {
         id -> Int4,
         name -> Text,
@@ -36,6 +44,7 @@ joinable!(question_stats -> questions (question_id));
 joinable!(questions -> categories (category_id));
 
 allow_tables_to_appear_in_same_query!(
+    admins,
     categories,
     question_stats,
     questions,
