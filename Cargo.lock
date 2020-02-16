@@ -847,6 +847,7 @@ dependencies = [
  "rocket_contrib",
  "rust-argon2",
  "serde",
+ "serde_repr",
  "uuid",
 ]
 
@@ -1121,6 +1122,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_repr"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd02c7587ec314570041b2754829f84d873ced14a96d1fd1823531e11db40573"
+dependencies = [
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn 1.0.13",
 ]
 
 [[package]]

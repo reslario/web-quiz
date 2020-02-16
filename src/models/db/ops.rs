@@ -155,6 +155,12 @@ impl Score {
     }
 }
 
+#[derive(Debug)]
+pub enum AdminError {
+    Query(diesel::result::Error),
+    NameInUse
+}
+
 impl Admin {
     pub fn named(named: &str, conn: &PgConnection) -> QueryResult<Option<Admin>> {
         use schema::admins::dsl::*;
@@ -163,6 +169,23 @@ impl Admin {
             .filter(name.eq(named))
             .first(conn)
             .optional()
+    }
+
+    pub fn insert(new: &NewAdmin, conn: &PgConnection) -> Result<Admin, AdminError> {
+        use schema::admins::dsl::*;
+
+        let name_exists = Admin::named(new.name, conn)
+            .map_err(AdminError::Query)?
+            .is_some();
+
+        if name_exists {
+            Err(AdminError::NameInUse)
+        } else {
+            insert_into(admins)
+                .values(new)
+                .get_result(conn)
+                .map_err(AdminError::Query)
+        }
     }
 }
 
@@ -190,7 +213,7 @@ macro_rules! impl_insert {
 
                 insert_into($table)
                     .values(new)
-                    .get_result(&*conn)
+                    .get_result(conn)
             }
         }
     };
@@ -204,5 +227,3 @@ impl_insert!(QuestionStats, NewQuestionStats, question_stats);
 impl_insert!(pub, Category, NewCategory, categories);
 
 impl_insert!(pub, Score, NewScore, scores);
-
-impl_insert!(pub, Admin, NewAdmin, admins);

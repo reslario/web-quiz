@@ -5,7 +5,10 @@ use {
     once_cell::sync::Lazy,
     rand::{thread_rng, Rng},
     argon2::{Config, Variant},
-    crate::models::db::models::{Admin, NewAdmin}
+    crate::models::db::{
+        AdminError,
+        models::{Admin, NewAdmin}
+    }
 };
 
 static CONFIG: Lazy<Config> = Lazy::new(config);
@@ -22,7 +25,7 @@ fn config() -> Config<'static> {
 #[derive(Debug)]
 pub enum Error {
     Hash(argon2::Error),
-    Db(diesel::result::Error)
+    Insert(AdminError)
 }
 
 #[derive(FromForm, Debug)]
@@ -40,13 +43,13 @@ pub fn register(cred: &Credentials, conn: &PgConnection) -> Result<(), Error> {
                 password: &hash
             },
             conn
-        ).map_err(Error::Db)
+        ).map_err(Error::Insert)
         ).map(drop)
 }
 
 pub fn verify(cred: &Credentials, conn: &PgConnection) -> Result<bool, Error> {
     Admin::named(&cred.name, conn)
-        .map_err(Error::Db)
+        .map_err(|e| Error::Insert(AdminError::Query(e)))
         .map(|admin| admin
             .map(|admin| verify_password(
                 &cred.password,

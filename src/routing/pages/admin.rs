@@ -1,20 +1,28 @@
 use {
     serde::Serialize,
     diesel::QueryResult,
+    serde_repr::Serialize_repr,
     rocket_contrib::templates::Template,
     rocket::{
+        uri,
         get,
         post,
         FromForm,
-        http::Status,
-        request::Form,
-        response::Redirect
+        response::Redirect,
+        request::{Form, FromFormValue},
+        http::{
+            Status,
+            RawStr,
+            impl_from_uri_param_identity,
+            uri::{Query, UriDisplay, Formatter}
+        }
     },
     crate::models::{
         web::{AdminGuard, Login, Or500},
         account::{self, Credentials},
         db::{
             DbConn,
+            AdminError,
             models::{Category, Question, NewQuestion, NewCategory}
         },
     }
@@ -22,17 +30,57 @@ use {
 
 #[derive(Serialize)]
 struct DisplayData<'a> {
-    categories: &'a [Category]
+    categories: &'a [Category],
+    error: Option<RegisterError>
 }
 
-#[get("/admin")]
-pub fn admin(_guard: AdminGuard, conn: DbConn) -> Result<Template, Status> {
+#[derive(Serialize_repr, Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum RegisterError {
+    None = 0,
+    NameInUse = 1,
+    Other = 2
+}
+
+impl RegisterError {
+    pub fn id(self) -> u8 {
+        self as u8
+    }
+}
+
+impl <'v> FromFormValue<'v> for RegisterError {
+    type Error = std::num::ParseIntError;
+
+    fn from_form_value(form_value: &'v RawStr) -> Result<Self, Self::Error> {
+        form_value
+            .parse::<u32>()
+            .map(|int| match int {
+                1 => RegisterError::NameInUse,
+                2 => RegisterError::Other,
+                _ => RegisterError::None
+            })
+    }
+}
+
+impl UriDisplay<Query> for RegisterError {
+    fn fmt(&self, f: &mut Formatter<Query>) -> std::fmt::Result {
+        f.write_value(self.id().to_string())
+    }
+}
+
+impl_from_uri_param_identity!([Query] RegisterError);
+
+#[get("/admin?<error>")]
+pub fn admin(error: Option<RegisterError>, _guard: AdminGuard, conn: DbConn) -> Result<Template, Status> {
     Category::load_all(&conn)
         .as_ref()
-        .map(|categories| DisplayData {
-            categories
-        })
-        .map(|data| Template::render("admin", data))
+        .map(|categories| Template::render(
+            if error.is_some() { "admin_error" } else { "admin" },
+            DisplayData {
+                categories,
+                error
+            }
+        ))
         .or_500()
 }
 
@@ -49,10 +97,17 @@ pub fn verify(credentials: Form<Credentials>, conn: DbConn) -> Login<Redirect> {
 }
 
 #[post("/admin/register", data = "<credentials>")]
-pub fn register(credentials: Form<Credentials>, conn: DbConn) -> Result<Redirect, Status> {
-    account::register(&credentials, &conn)
-        .map(|_| Redirect::to("/admin"))
-        .or_500()
+pub fn register(credentials: Form<Credentials>, conn: DbConn) -> Redirect {
+    match account::register(&credentials, &conn) {
+        Ok(()) => Redirect::to("/admin"),
+        Err(e) => match e {
+            account::Error::Hash(_) => Redirect::to(uri!(admin: RegisterError::Other)),
+            account::Error::Insert(e) => match e {
+                AdminError::Query(_) => Redirect::to(uri!(admin: RegisterError::Other)),
+                AdminError::NameInUse => Redirect::to(uri!(admin: RegisterError::NameInUse))
+            }
+        }
+    }
 }
 
 #[derive(FromForm, Debug)]

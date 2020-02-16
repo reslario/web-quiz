@@ -1,0 +1,8 @@
+{% extends "admin" %}
+{% block error %}
+    {% if error == 1 %}
+        Dieser Name wird schon verwendet. Bitte wähle einen anderen.
+    {% elif error >= 2 %}
+        Bei der Registrierung ist ein Fehler aufgetreten. Bitte versuche es später erneut.
+    {% endif %}
+{% endblock error %}
