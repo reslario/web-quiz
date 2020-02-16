@@ -13,6 +13,7 @@ uuid = { version = "0.8.1", features = ["v4"] }
 owning_ref = "0.4.0"
 derive_more = "0.99.2"
 rand = "0.7.3"
+rust-argon2 = "0.8.1"
 
 [dependencies.rocket_contrib]
 version = "0.4.2"

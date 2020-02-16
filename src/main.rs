@@ -25,7 +25,11 @@ fn main() {
             routing::pages::answer,
             routing::pages::continue_game,
             routing::pages::end_game,
-            routing::pages::use_joker
+            routing::pages::use_joker,
+            routing::pages::admin,
+            routing::pages::verify,
+            routing::pages::register,
+            routing::pages::add_question
         ])
         .register(catchers![
             routing::catchers::unauthorized
@@ -33,5 +37,6 @@ fn main() {
         .attach(Template::fairing())
         .attach(models::db::DbConn::fairing())
         .manage(models::web::init_game_states())
+        .manage(models::web::init_admin_sessions())
         .launch();
 }

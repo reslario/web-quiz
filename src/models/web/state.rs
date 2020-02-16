@@ -3,11 +3,11 @@ use {
     derive_more::{Deref, DerefMut},
     crate::models::{
         game::GameState,
-        web::{Session, SESSION_COOKIE}
+        web::{Session, Admin, SESSION_COOKIE}
     },
     std::{
-        collections::HashMap,
         sync::Mutex,
+        collections::{HashMap, HashSet}
     },
     rocket::{
         State,
@@ -110,4 +110,11 @@ impl <'a, 'r> FromRequest<'a, 'r> for EndGame {
 
         end_game
     }
+}
+
+pub(super) type AdminSessions = HashSet<Admin>;
+pub(super)  type SyncedAdminSessions = Mutex<AdminSessions>;
+
+pub fn init_admin_sessions() -> SyncedAdminSessions {
+    Mutex::new(HashSet::new())
 }

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin</title>
+</head>
+<body>
+<p>Frage hinzufügen</p>
+<form method="post" action="/admin/add_question">
+    <input type="text" name="question" placeholder="Frage" />
+    <input type="text" name="correct" placeholder="Richtige Antwort" />
+    {% for i in range(start = 1, end = 4) %}
+    <input type="text" name="incorrect{{ i }}" placeholder="Falsche Antwort {{ i }}" />
+    {% endfor %}
+    <p>Kategorie</p>
+    <select name="category">
+        {% for cat in categories -%}
+        <option value="{{ cat.id }}">{{ cat.name }}</option>
+        {%- endfor %}
+        <option value="">Neue Kategorie...</option>
+    </select>
+    <input type="text" name="new_category" placeholder="Neue Kategorie..." />
+    <button type="submit">Hinzufügen</button>
+</form>
+
+<p>Admin hinzufügen</p>
+<form method="post" action="/admin/register">
+    <input type="text" name="name" />
+    <input type="password" name="password" />
+    <button type="submit">Registrieren</button>
+</form>
+</body>
+</html>
