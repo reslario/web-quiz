@@ -128,18 +128,16 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
     let (points, joker) = (game_state.points, game_state.joker);
     let (cat, next_q) = match game_state.next_question() {
         Some(v) => v,
-        None => {
-            match game_state.load_more_questions(&conn) {
-                Ok(()) => game_state
-                    .next_question()
-                    .or_500()?,
-                Err(e) => return match e {
-                    QuestionError::Query(_) =>
-                        Err(Status::InternalServerError),
-                    QuestionError::NoneRemaining =>
-                        render_intermission(&game_state, &conn)
-                            .or_500()
-                }
+        None => match game_state.load_more_questions(&conn) {
+            Ok(()) => game_state
+                .next_question()
+                .or_500()?,
+            Err(e) => return match e {
+                QuestionError::Query(_) =>
+                    Err(Status::InternalServerError),
+                QuestionError::NoneRemaining =>
+                    render_intermission(&game_state, &conn)
+                        .or_500()
             }
         }
     };
