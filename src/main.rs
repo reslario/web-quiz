@@ -26,6 +26,7 @@ fn main() {
             routing::pages::continue_game,
             routing::pages::end_game,
             routing::pages::use_joker,
+            routing::pages::resume,
             routing::pages::admin,
             routing::pages::verify,
             routing::pages::register,

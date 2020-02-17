@@ -14,12 +14,14 @@
     Punkte: {{ points }}
     Joker: {{ joker }}
 </div>
-<select multiple name="categories">
-    {% for cat in categories -%}
-    <option value="{{ cat.id }}">{{ cat.name }}</option>
-    {%- endfor %}
-</select>
-<button type="submit">Weiterspielen</button>
+<form method="post" action="/play/resume">
+    <select multiple name="categories">
+        {% for cat in categories -%}
+        <option value="{{ cat.id }}">{{ cat.name }}</option>
+        {%- endfor %}
+    </select>
+    <button type="submit">Weiterspielen</button>
+</form>
 <a href="/end">Spiel beenden</a>
 </body>
 </html>

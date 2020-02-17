@@ -1,6 +1,7 @@
 use {
     super::Settings,
     serde::Serialize,
+    diesel::QueryResult,
     rocket_contrib::templates::Template,
     rand::{
         thread_rng,
@@ -10,21 +11,19 @@ use {
         get,
         post,
         FromForm,
-        http::Status,
-        request::Form,
         response::Redirect,
+        http::{Status, RawStr},
+        request::{Form, FormItems, FromFormValue}
     },
     crate::models::{
-        game::{GameState, AlreadyUsed, QuestionError, pseudo_shuffle},
         web::{NewSession, NewGameState, SyncedGameState, Or500, EndGame},
+        game::{GameState, AlreadyUsed, QuestionError, pseudo_shuffle, correct_ratio},
         db::{
             DbConn,
             models::{Category, Question, Score, NewScore}
         }
     }
 };
-use crate::models::game::correct_ratio;
-use diesel::QueryResult;
 
 #[derive(Serialize)]
 struct DisplayData<'a> {
@@ -65,15 +64,15 @@ impl <'a> DisplayData<'a> {
 
     pub fn apply_joker(&mut self, correct: &str) {
         let indices = sample(&mut thread_rng(), 3, 2);
-            self.answers
-                .iter_mut()
-                .filter(|a| a.string != correct)
-                .enumerate()
-                .filter(|(i, _)| indices
-                    .iter()
-                    .find(|id| id == i)
-                    .is_some()
-                ).for_each(|(_, a)| a.disabled = true)
+        self.answers
+            .iter_mut()
+            .filter(|a| a.string != correct)
+            .enumerate()
+            .filter(|(i, _)| indices
+                .iter()
+                .find(|id| id == i)
+                .is_some()
+            ).for_each(|(_, a)| a.disabled = true)
     }
 }
 
@@ -162,6 +161,36 @@ fn render_intermission(game_state: &SyncedGameState, conn: &DbConn) -> QueryResu
             joker: game_state.joker
         }))
 
+}
+
+#[derive(Debug)]
+pub struct NewCategories {
+    categories: Vec<i32>
+}
+
+impl <'f> rocket::request::FromForm<'f> for NewCategories {
+    type Error = &'f RawStr;
+
+    fn from_form(it: &mut FormItems<'f>, strict: bool) -> Result<Self, Self::Error> {
+        it.map(|fi| fi.key_value())
+            .filter_map(|(key, val)| match &*key.url_decode_lossy() {
+                "categories" => i32::from_form_value(val).into(),
+                _ if strict => Err(val).into(),
+                _ => None
+            })
+            .collect::<Result<_, _>>()
+            .map(|categories| NewCategories {
+                categories
+            })
+    }
+}
+
+#[post("/play/resume", data = "<new>")]
+pub fn resume(new: Form<NewCategories>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
+    game_state.categories = Category::load_with_ids(&new.categories, &conn)
+        .or_500()?;
+
+    Ok(Redirect::to("/play"))
 }
 
 #[derive(Serialize)]
