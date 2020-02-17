@@ -11,6 +11,12 @@ use {
     }
 };
 
+#[derive(Debug)]
+pub enum QuestionError {
+    Query(diesel::result::Error),
+    NoneRemaining
+}
+
 #[derive(Debug, Default)]
 pub struct GameState {
     pub user: String,
@@ -18,7 +24,8 @@ pub struct GameState {
     pub current_question: Option<Question>,
     pub questions: VecDeque<Question>,
     pub points: i32,
-    pub joker: bool
+    pub joker: bool,
+    answered: Vec<i32>
 }
 
 impl GameState {
@@ -27,11 +34,15 @@ impl GameState {
             user,
             categories,
             joker: true,
-            ..Default::default()
+            ..<_>::default()
         }
     }
 
     pub fn next_question(&mut self) -> Option<(&Category, &Question)> {
+        self.current_question
+            .as_ref()
+            .map(Question::id)
+            .map(|id| self.answered.push(id));
         self.current_question = self.questions.pop_front();
         self.current_question()
     }
@@ -46,9 +57,13 @@ impl GameState {
             )
     }
 
-    pub fn load_more_questions(&mut self, conn: &PgConnection) -> QueryResult<()> {
-        //TODO these need to be different than the ones before
-        Question::load_set(&self.categories, conn)
+    pub fn load_more_questions(&mut self, conn: &PgConnection) -> Result<(), QuestionError> {
+        Question::load_set(&self.categories, &self.answered, conn)
+            .map_err(QuestionError::Query)
+            .into_iter()
+            .filter(|vec| !vec.is_empty())
+            .next()
+            .ok_or(QuestionError::NoneRemaining)
             .map(|mut questions| self.questions
                 .extend({
                     questions.shuffle(&mut thread_rng());

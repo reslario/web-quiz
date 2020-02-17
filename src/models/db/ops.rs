@@ -12,7 +12,7 @@ use {
         prelude::*,
         pg::Pg,
         result::QueryResult,
-        expression::dsl::any,
+        expression::dsl::{any, all},
         query_builder::{AsChangeset, QueryFragment}
     }
 };
@@ -49,12 +49,19 @@ impl Question {
         Ok(res)
     }
 
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
     pub fn is_of_category(&self, cat: &Category) -> bool {
         self.category_id == cat.id
     }
 
-    pub(in crate::models) fn load_set(categories: &[Category], conn: &PgConnection) -> QueryResult<Vec<Question>> {
+    pub(in crate::models) fn load_set(categories: &[Category], answered: &[i32], conn: &PgConnection) -> QueryResult<Vec<Question>> {
+        use schema::questions::dsl::*;
+
         Question::belonging_to(categories)
+            .filter(id.ne(all(answered)))
             .limit(100)
             .load(conn)
     }

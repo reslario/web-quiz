@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spielen</title>
+</head>
+<body>
+<p>
+    Es sind keine Fragen mehr in dieser Kategorie übrig.
+    Du kannst entweder mehr Kategorien auswählen oder das Spiel beenden.
+</p>
+<div>
+    Aktueller Stand:
+    Punkte: {{ points }}
+    Joker: {{ joker }}
+</div>
+<select multiple name="categories">
+    {% for cat in categories -%}
+    <option value="{{ cat.id }}">{{ cat.name }}</option>
+    {%- endfor %}
+</select>
+<button type="submit">Weiterspielen</button>
+<a href="/end">Spiel beenden</a>
+</body>
+</html>

@@ -15,7 +15,7 @@ use {
         response::Redirect,
     },
     crate::models::{
-        game::{GameState, AlreadyUsed, pseudo_shuffle},
+        game::{GameState, AlreadyUsed, QuestionError, pseudo_shuffle},
         web::{NewSession, NewGameState, SyncedGameState, Or500, EndGame},
         db::{
             DbConn,
@@ -24,6 +24,7 @@ use {
     }
 };
 use crate::models::game::correct_ratio;
+use diesel::QueryResult;
 
 #[derive(Serialize)]
 struct DisplayData<'a> {
@@ -115,16 +116,31 @@ pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: D
     }
 }
 
+#[derive(Debug, Serialize)]
+struct Intermission<'a> {
+    categories: &'a [Category],
+    points: i32,
+    joker: bool
+}
+
 #[get("/play")]
 pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
     let (points, joker) = (game_state.points, game_state.joker);
     let (cat, next_q) = match game_state.next_question() {
         Some(v) => v,
         None => {
-            game_state.load_more_questions(&*conn)
-                .or_500()?;
-            game_state.next_question()
-                .or_500()?
+            match game_state.load_more_questions(&conn) {
+                Ok(()) => game_state
+                    .next_question()
+                    .or_500()?,
+                Err(e) => return match e {
+                    QuestionError::Query(_) =>
+                        Err(Status::InternalServerError),
+                    QuestionError::NoneRemaining =>
+                        render_intermission(&game_state, &conn)
+                            .or_500()
+                }
+            }
         }
     };
 
@@ -138,6 +154,16 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
         joker,
         ratio
     )))
+}
+
+fn render_intermission(game_state: &SyncedGameState, conn: &DbConn) -> QueryResult<Template> {
+    Category::load_all(conn)
+        .map(|categories| Template::render("play_error", Intermission {
+            categories: &categories,
+            points: game_state.points,
+            joker: game_state.joker
+        }))
+
 }
 
 #[derive(Serialize)]
