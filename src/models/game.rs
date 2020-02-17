@@ -6,7 +6,7 @@ use {
         seq::SliceRandom
     },
     crate::{
-        routing::Answer,
+        routing::play::Answer,
         models::db::models::{Question, Category}
     }
 };

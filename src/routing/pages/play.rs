@@ -1,7 +1,7 @@
 use {
-    super::Settings,
     serde::Serialize,
     diesel::QueryResult,
+    super::start::Settings,
     rocket_contrib::templates::Template,
     rand::{
         thread_rng,

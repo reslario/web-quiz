@@ -20,17 +20,17 @@ fn main() {
             routing::static_page,
             routing::static_content,
             routing::favicon,
-            routing::pages::settings,
-            routing::pages::new_game,
-            routing::pages::answer,
-            routing::pages::continue_game,
-            routing::pages::end_game,
-            routing::pages::use_joker,
-            routing::pages::resume,
-            routing::pages::admin,
-            routing::pages::verify,
-            routing::pages::register,
-            routing::pages::add_question
+            routing::pages::start::settings,
+            routing::pages::play::new_game,
+            routing::pages::play::answer,
+            routing::pages::play::continue_game,
+            routing::pages::play::end_game,
+            routing::pages::play::use_joker,
+            routing::pages::play::resume,
+            routing::pages::admin::admin,
+            routing::pages::admin::verify,
+            routing::pages::admin::register,
+            routing::pages::admin::add_question
         ])
         .register(catchers![
             routing::catchers::unauthorized
