@@ -7,7 +7,7 @@
 <body>
 <span>{{ category }}</span>
 <p>{{ question }}</p>
-<form method="post" action="/answer">
+<form method="post" action="/play/answer">
 {% for ans in answers -%}
 <button type="submit" name="answer"
         {% if ans.disabled %}
@@ -19,7 +19,7 @@
 </form>
 <span>{{ points }}</span>
 {% if joker -%}
-<a href="/use_joker">use joker</a>
+<a href="/play/use_joker">use joker</a>
 {%- endif %}
 <p>Diese Frage wird zu {{ ratio }}% richtig beantwortet.</p>
 </body>

@@ -76,7 +76,7 @@ impl <'a> DisplayData<'a> {
     }
 }
 
-#[post("/new_game", data = "<settings>")]
+#[post("/play/new_game", data = "<settings>")]
 pub fn new_game(settings: Form<Settings>, _sess: NewSession, new_game_state: NewGameState, conn: DbConn) -> Result<Redirect, Status> {
     let categories = Category::load_with_ids(&settings.categories, &*conn)
         .or_500()?;
@@ -94,7 +94,7 @@ pub struct Response {
     answer: String
 }
 
-#[post("/answer", data = "<response>")]
+#[post("/play/answer", data = "<response>")]
 pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
     let cq = game_state
         .current_question
@@ -111,7 +111,7 @@ pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: D
         cq.stats()
             .add_incorrect(&*conn)
             .or_500()?;
-        Ok(Redirect::to("/end"))
+        Ok(Redirect::to("/play/end"))
     }
 }
 
@@ -202,7 +202,7 @@ struct Results<'a> {
     top_three: &'a [Score]
 }
 
-#[get("/end")]
+#[get("/play/end")]
 pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
     let score = Score::insert(
         &NewScore {
@@ -225,7 +225,7 @@ pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
     }))
 }
 
-#[get("/use_joker")]
+#[get("/play/use_joker")]
 pub fn use_joker(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
     let allowed = match game_state.use_joker() {
         Ok(()) => true,
