@@ -1,5 +1,5 @@
 use {
-    std::ops::{Add, Div},
+    std::ops::{Add, Div, Mul},
     crate::models::db::{
         schema,
         models::*
@@ -108,11 +108,13 @@ impl <'a> Stats<'a> {
 
 impl QuestionStats {
     pub fn correct_ratio(&self) -> u8 {
-        self.num_correct
+        (self.num_correct as f32)
             .div(self.num_incorrect
                 .add(self.num_correct)
                 .max(1)
-            ) as u8
+                as f32
+            ).mul(100.)
+            as u8
     }
 }
 
