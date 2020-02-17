@@ -26,7 +26,7 @@ pub fn settings(user: Form<User>, conn: db::DbConn) -> Result<Template, Status> 
     db::models::Category::load_all(&*conn)
         .map_err(|_| Status::InternalServerError)
         .map(|categories| Template::render(
-            "start_name",
+            "settings",
             &AvailableSettings {
                 user: user.0.name,
                 categories
