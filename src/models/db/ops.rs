@@ -21,7 +21,7 @@ impl Category {
     pub fn load_all(conn: &PgConnection) -> QueryResult<Vec<Category>> {
         use schema::categories::dsl::*;
 
-        categories.load(&*conn)
+        categories.load(conn)
     }
 
     pub fn load_with_ids(ids: &[i32], conn: &PgConnection) -> QueryResult<Vec<Category>> {
@@ -39,7 +39,7 @@ impl Question {
 
         let res: Question = insert_into(questions)
             .values(new)
-            .get_result(&*conn)?;
+            .get_result(conn)?;
 
         QuestionStats::insert(
             &NewQuestionStats { question_id: res.id },

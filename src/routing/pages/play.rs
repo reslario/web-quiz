@@ -78,7 +78,7 @@ impl <'a> DisplayData<'a> {
 
 #[post("/play/new_game", data = "<settings>")]
 pub fn new_game(settings: Form<Settings>, _sess: NewSession, new_game_state: NewGameState, conn: DbConn) -> Result<Redirect, Status> {
-    let categories = Category::load_with_ids(&settings.categories, &*conn)
+    let categories = Category::load_with_ids(&settings.categories, &conn)
         .or_500()?;
 
     new_game_state.set(GameState::new(
@@ -102,14 +102,14 @@ pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: D
         .or_500()?;
     if response.answer == cq.correct {
         cq.stats()
-            .add_correct(&*conn)
+            .add_correct(&conn)
             .or_500()?;
         drop(cq);
         game_state.increment_points();
         Ok(Redirect::to("/play"))
     } else {
         cq.stats()
-            .add_incorrect(&*conn)
+            .add_incorrect(&conn)
             .or_500()?;
         Ok(Redirect::to("/play/end"))
     }
@@ -141,7 +141,7 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
         }
     };
 
-    let ratio = correct_ratio(next_q, &*conn)
+    let ratio = correct_ratio(next_q, &conn)
         .or_500()?;
 
     Ok(Template::render("play", DisplayData::new(
@@ -209,12 +209,12 @@ pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
             name: &end.game_state.user,
             points: end.game_state.points
         },
-        &*conn
+        &conn
     ).or_500()?;
 
-    let placement = score.placement(&*conn).or_500()?;
-    let (higher, lower) = score.neighbours(&*conn).or_500()?;
-    let top_three = Score::top_three(&*conn).or_500()?;
+    let placement = score.placement(&conn).or_500()?;
+    let (higher, lower) = score.neighbours(&conn).or_500()?;
+    let top_three = Score::top_three(&conn).or_500()?;
 
     Ok(Template::render("end", Results {
         user_score: &score,
@@ -233,7 +233,7 @@ pub fn use_joker(mut game_state: SyncedGameState, conn: DbConn) -> Result<Templa
     };
     let (cat, q) = game_state.current_question().or_500()?;
 
-    let ratio = correct_ratio(q, &*conn)
+    let ratio = correct_ratio(q, &conn)
         .or_500()?;
 
     let mut display_data = DisplayData::new(
