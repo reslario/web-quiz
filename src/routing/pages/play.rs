@@ -32,7 +32,8 @@ struct DisplayData<'a> {
     category: &'a str,
     points: i32,
     joker: bool,
-    ratio: u8
+    ratio: u8,
+    elapsed_secs: u64
 }
 
 #[derive(Serialize)]
@@ -42,7 +43,7 @@ pub struct Answer<'a> {
 }
 
 impl <'a> DisplayData<'a> {
-    pub fn new(question: &'a Question, category: &'a str, points: i32, joker: bool, ratio: u8) -> DisplayData<'a> {
+    pub fn new(question: &'a Question, category: &'a str, points: i32, joker: bool, ratio: u8, elapsed_secs: u64) -> DisplayData<'a> {
         let mut answers = question
             .incorrect
             .iter()
@@ -58,7 +59,8 @@ impl <'a> DisplayData<'a> {
             category,
             points,
             joker,
-            ratio
+            ratio,
+            elapsed_secs
         }
     }
 
@@ -125,6 +127,10 @@ struct Intermission<'a> {
 #[get("/play")]
 pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
     let (points, joker) = (game_state.points, game_state.joker);
+    let elapsed_secs = game_state
+        .stopwatch
+        .elapsed()
+        .as_secs();
     let (cat, next_q) = match game_state.next_question() {
         Some(v) => v,
         None => match game_state.load_more_questions(&conn) {
@@ -135,7 +141,7 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
                 QuestionError::Query(_) =>
                     Err(Status::InternalServerError),
                 QuestionError::NoneRemaining =>
-                    render_intermission(&game_state, &conn)
+                    intermission(&mut game_state, &conn)
                         .or_500()
             }
         }
@@ -149,18 +155,24 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
         &cat.name,
         points,
         joker,
-        ratio
+        ratio,
+        elapsed_secs
     )))
 }
 
-fn render_intermission(game_state: &SyncedGameState, conn: &DbConn) -> QueryResult<Template> {
+fn intermission(game_state: &mut SyncedGameState, conn: &DbConn) -> QueryResult<Template> {
+    game_state.stopwatch.pause();
     Category::load_all(conn)
-        .map(|categories| Template::render("play_error", Intermission {
-            categories: &categories,
-            points: game_state.points,
-            joker: game_state.joker
-        }))
+        .map(|categories| render_intermission(&game_state, &categories))
 
+}
+
+fn render_intermission(game_state: &SyncedGameState, categories: &[Category]) -> Template {
+     Template::render("play_error", Intermission {
+        categories,
+        points: game_state.points,
+        joker: game_state.joker
+     })
 }
 
 #[derive(Debug)]
@@ -187,6 +199,7 @@ impl <'f> rocket::request::FromForm<'f> for NewCategories {
 
 #[post("/play/resume", data = "<new>")]
 pub fn resume(new: Form<NewCategories>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
+    game_state.stopwatch.resume();
     game_state.categories = Category::load_with_ids(&new.categories, &conn)
         .or_500()?;
 
@@ -236,12 +249,18 @@ pub fn use_joker(mut game_state: SyncedGameState, conn: DbConn) -> Result<Templa
     let ratio = correct_ratio(q, &conn)
         .or_500()?;
 
+    let elapsed_secs = game_state
+        .stopwatch
+        .elapsed()
+        .as_secs();
+
     let mut display_data = DisplayData::new(
         q,
         &cat.name,
         game_state.points,
         false,
-        ratio
+        ratio,
+        elapsed_secs
     );
 
     if allowed {

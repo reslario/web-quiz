@@ -17,10 +17,11 @@
 </button>
 {%- endfor %}
 </form>
-<span>{{ points }}</span>
+<span>Punkte: {{ points }}</span>
 {% if joker -%}
 <a href="/play/use_joker">use joker</a>
 {%- endif %}
+<span>Vergangene Zeit: {{ elapsed_secs }}</span>
 <p>Diese Frage wird zu {{ ratio }}% richtig beantwortet.</p>
 </body>
 </html>

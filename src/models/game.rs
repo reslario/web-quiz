@@ -7,6 +7,7 @@ use {
     },
     crate::{
         routing::play::Answer,
+        models::stopwatch::Stopwatch,
         models::db::models::{Question, Category}
     }
 };
@@ -25,6 +26,7 @@ pub struct GameState {
     pub questions: VecDeque<Question>,
     pub points: i32,
     pub joker: bool,
+    pub stopwatch: Stopwatch,
     answered: Vec<i32>
 }
 
@@ -34,6 +36,7 @@ impl GameState {
             user,
             categories,
             joker: true,
+            stopwatch: Stopwatch::start(),
             ..<_>::default()
         }
     }
