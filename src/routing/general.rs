@@ -3,7 +3,8 @@ use {
     std::path::{PathBuf, Path},
     rocket::{
         get,
-        response::NamedFile
+        http::Status,
+        response::NamedFile,
     }
 };
 
@@ -27,25 +28,25 @@ fn static_page_path() -> PathBuf {
 }
 
 #[get("/favicon.ico")]
-pub fn favicon() -> std::io::Result<NamedFile> {
+pub fn favicon() -> Result<NamedFile, Status> {
     static_content("favicon.ico".into())
 }
 
 #[get("/content/static/<path..>", rank = 98)]
-pub fn static_content(path: PathBuf) -> std::io::Result<NamedFile> {
-    NamedFile::open(
-        STATIC_CONTENT_PATH.join(path)
-    )
+pub fn static_content(path: PathBuf) -> Result<NamedFile, Status> {
+    NamedFile::open(STATIC_CONTENT_PATH.join(path))
+        .map_err(|_| Status::NotFound)
 }
 
 #[get("/<path..>", rank = 99)]
-pub fn static_page(path: PathBuf) -> std::io::Result<NamedFile> {
+pub fn static_page(path: PathBuf) -> Result<NamedFile, Status> {
     let mut path = STATIC_PAGE_PATH.join(path);
     path.set_extension("html");
     NamedFile::open(path)
+        .map_err(|_| Status::NotFound)
 }
 
 #[get("/")]
-pub fn index() -> std::io::Result<NamedFile> {
+pub fn index() -> Result<NamedFile, Status> {
     static_page("index.html".into())
 }
