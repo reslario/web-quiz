@@ -20,7 +20,7 @@ use {
         game::{GameState, AlreadyUsed, QuestionError, pseudo_shuffle, correct_ratio},
         db::{
             DbConn,
-            models::{Category, Question, Score, NewScore}
+            models::{Category, Question, Score}
         }
     }
 };
@@ -218,10 +218,7 @@ struct Results<'a> {
 #[get("/play/end")]
 pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
     let score = Score::insert(
-        &NewScore {
-            name: &end.game_state.user,
-            points: end.game_state.weighted_points()
-        },
+        &end.game_state.score(),
         &conn
     ).or_500()?;
 

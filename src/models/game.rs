@@ -8,7 +8,7 @@ use {
     crate::{
         routing::play::Answer,
         models::stopwatch::Stopwatch,
-        models::db::models::{Question, Category}
+        models::db::models::{Question, Category, NewScore}
     }
 };
 
@@ -87,12 +87,19 @@ impl GameState {
         }
     }
 
-    pub fn weighted_points(&self) -> i32 {
+    fn weighted_points(&self) -> i32 {
         (self.points as u64 / self
             .stopwatch
             .elapsed()
             .as_secs())
         as i32
+    }
+
+    pub fn score(&self) -> NewScore {
+        NewScore {
+            name: &self.user,
+            points: self.weighted_points(),
+        }
     }
 }
 
