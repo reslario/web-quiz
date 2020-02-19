@@ -86,6 +86,14 @@ impl GameState {
             Ok(self.joker = false)
         }
     }
+
+    pub fn weighted_points(&self) -> i32 {
+        (self.points as u64 / self
+            .stopwatch
+            .elapsed()
+            .as_secs())
+        as i32
+    }
 }
 
 pub struct AlreadyUsed;

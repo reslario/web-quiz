@@ -220,7 +220,7 @@ pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
     let score = Score::insert(
         &NewScore {
             name: &end.game_state.user,
-            points: end.game_state.points
+            points: end.game_state.weighted_points()
         },
         &conn
     ).or_500()?;
