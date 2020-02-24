@@ -38,7 +38,7 @@ pub fn settings(user: Form<User>, conn: db::DbConn) -> Result<Template, Status> 
 #[derive(Debug)]
 pub struct Settings {
     pub user: String,
-    pub categories: Vec<i32>
+    pub categories: Vec<db::CategoryId>
 }
 
 // rocket 4.x doesn't have support for multi-select forms yet,
@@ -54,7 +54,7 @@ impl <'f> rocket::request::FromForm<'f> for Settings {
             match key.url_decode_lossy().as_str() {
                 "user" => user = Some(String::from_form_value(val)?),
                 "categories" => categories.push(
-                    i32::from_form_value(val)?
+                    db::CategoryId::from_form_value(val)?
                 ),
                 _ if strict => return Err(val),
                 _ => {}

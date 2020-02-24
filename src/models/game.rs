@@ -8,7 +8,10 @@ use {
     crate::{
         routing::play::Answer,
         models::stopwatch::Stopwatch,
-        models::db::models::{Question, Category, NewScore}
+        models::db::{
+            QuestionId,
+            models::{Question, Category, NewScore}
+        }
     }
 };
 
@@ -27,7 +30,7 @@ pub struct GameState {
     pub points: i32,
     pub joker: bool,
     pub stopwatch: Stopwatch,
-    answered: Vec<i32>
+    answered: Vec<QuestionId>,
 }
 
 impl GameState {

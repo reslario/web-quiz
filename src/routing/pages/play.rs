@@ -24,6 +24,7 @@ use {
         }
     }
 };
+use crate::models::db::CategoryId;
 
 #[derive(Serialize)]
 struct DisplayData<'a> {
@@ -177,7 +178,7 @@ fn render_intermission(game_state: &SyncedGameState, categories: &[Category]) ->
 
 #[derive(Debug)]
 pub struct NewCategories {
-    categories: Vec<i32>
+    categories: Vec<CategoryId>
 }
 
 impl <'f> rocket::request::FromForm<'f> for NewCategories {
@@ -186,7 +187,7 @@ impl <'f> rocket::request::FromForm<'f> for NewCategories {
     fn from_form(it: &mut FormItems<'f>, strict: bool) -> Result<Self, Self::Error> {
         it.map(|fi| fi.key_value())
             .filter_map(|(key, val)| match &*key.url_decode_lossy() {
-                "categories" => i32::from_form_value(val).into(),
+                "categories" => CategoryId::from_form_value(val).into(),
                 _ if strict => Err(val).into(),
                 _ => None
             })

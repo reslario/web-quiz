@@ -1,30 +1,80 @@
 use {
-    std::ops::{Add, Div, Mul},
+    serde::Serialize,
+    std::{
+        io::Write,
+        ops::{Add, Div, Mul}
+    },
     crate::models::db::{
         schema,
         models::*
+    },
+    rocket::{
+        http::RawStr,
+        request::FromFormValue
     },
     diesel::{
         update,
         insert_into,
         PgConnection,
+        AsExpression,
         RunQueryDsl,
         prelude::*,
         pg::Pg,
+        backend::Backend,
+        sql_types::Integer,
         result::QueryResult,
         expression::dsl::{any, all},
+        serialize::{ToSql, Output},
         query_builder::{AsChangeset, QueryFragment}
     }
 };
 
+macro_rules! impl_to_sql_for_id {
+    ($item:ident) => {
+        impl<DB> ToSql<Integer, DB> for $item
+        where
+            DB: Backend,
+            i32: ToSql<Integer, DB>
+        {
+            fn to_sql<W: Write>(&self, out: &mut Output<W, DB>) -> diesel::serialize::Result {
+                self.0.to_sql(out)
+            }
+        }
+    }
+}
+
+macro_rules! impl_from_form_value_for_id {
+    ($item:ident) => {
+        impl<'v> FromFormValue<'v> for $item {
+            type Error = &'v RawStr;
+
+            fn from_form_value(form_value: &'v RawStr) -> Result<Self, Self::Error> {
+                i32::from_form_value(form_value)
+                    .map($item)
+            }
+        }
+    };
+}
+
+#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Hash)]
+#[sql_type = "diesel::sql_types::Integer"]
+pub struct CategoryId(i32);
+
+impl_to_sql_for_id!(CategoryId);
+impl_from_form_value_for_id!(CategoryId);
+
 impl Category {
+    pub fn id(&self) -> CategoryId {
+        CategoryId(self.id)
+    }
+
     pub fn load_all(conn: &PgConnection) -> QueryResult<Vec<Category>> {
         use schema::categories::dsl::*;
 
         categories.load(conn)
     }
 
-    pub fn load_with_ids(ids: &[i32], conn: &PgConnection) -> QueryResult<Vec<Category>> {
+    pub fn load_with_ids(ids: &[CategoryId], conn: &PgConnection) -> QueryResult<Vec<Category>> {
         use schema::categories::dsl::*;
 
         categories
@@ -33,7 +83,18 @@ impl Category {
     }
 }
 
+#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Hash)]
+#[sql_type = "diesel::sql_types::Integer"]
+pub struct QuestionId(i32);
+
+impl_to_sql_for_id!(QuestionId);
+impl_from_form_value_for_id!(QuestionId);
+
 impl Question {
+    pub fn id(&self) -> QuestionId {
+        QuestionId(self.id)
+    }
+
     pub fn insert(new: &NewQuestion, conn: &PgConnection) -> QueryResult<Question> {
         use schema::questions::dsl::*;
 
@@ -49,15 +110,11 @@ impl Question {
         Ok(res)
     }
 
-    pub fn id(&self) -> i32 {
-        self.id
-    }
-
     pub fn is_of_category(&self, cat: &Category) -> bool {
         self.category_id == cat.id
     }
 
-    pub(in crate::models) fn load_set(categories: &[Category], answered: &[i32], conn: &PgConnection) -> QueryResult<Vec<Question>> {
+    pub(in crate::models) fn load_set(categories: &[Category], answered: &[QuestionId], conn: &PgConnection) -> QueryResult<Vec<Question>> {
         use schema::questions::dsl::*;
 
         Question::belonging_to(categories)
