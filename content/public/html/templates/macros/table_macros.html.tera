@@ -1,0 +1,27 @@
+{% import "macros/format_macros" as format_macros %}
+
+{% macro table_headers() %}
+    <tr>
+        <th>User</th>
+        <th>Punkte</th>
+        <th>Gewichtete Punkte</th>
+        <th>Gespielt am</th>
+        <th>Spieldauer</th>
+        <th>Kategorien</th>
+    </tr>
+{% endmacro table_headers %}
+
+{% macro score_rows(scores) %}
+    {% for score in scores -%}
+        <tr>
+            <td>{{ score.name }}</td>
+            <td>{{ score.points }}</td>
+            <td>{{ score.weighted_points }}</td>
+            <td>{{ format_macros::format_ymd(ymd = score.played_on) }}</td>
+            <td>{{ format_macros::format_hms(hms = score.duration) }}</td>
+            <td>
+                {{ score.categories | map(attribute = "name") | join(sep = ", ") }}
+            </td>
+        </tr>
+    {%- endfor %}
+{% endmacro score_rows %}

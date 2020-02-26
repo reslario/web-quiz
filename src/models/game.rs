@@ -1,9 +1,13 @@
 use {
-    std::collections::VecDeque,
     diesel::{PgConnection, QueryResult},
     rand::{
         thread_rng,
         seq::SliceRandom
+    },
+    std::{
+        time::SystemTime,
+        iter::FromIterator,
+        collections::{VecDeque, HashSet}
     },
     crate::{
         routing::play::Answer,
@@ -24,22 +28,24 @@ pub enum QuestionError {
 #[derive(Debug, Default)]
 pub struct GameState {
     pub user: String,
-    pub categories: Vec<Category>,
+    categories: Vec<Category>,
     pub current_question: Option<Question>,
     pub questions: VecDeque<Question>,
     pub points: i32,
     pub joker: bool,
     pub stopwatch: Stopwatch,
     answered: Vec<QuestionId>,
+    total_categories: HashSet<Category>
 }
 
 impl GameState {
     pub fn new(user: String, categories: Vec<Category>) -> GameState {
         GameState {
             user,
-            categories,
+            categories: categories.clone(),
             joker: true,
             stopwatch: Stopwatch::start(),
+            total_categories: HashSet::from_iter(categories),
             ..<_>::default()
         }
     }
@@ -78,6 +84,11 @@ impl GameState {
             )
     }
 
+    pub fn set_categories(&mut self, categories: Vec<Category>) {
+        self.total_categories.extend(categories.clone());
+        self.categories = categories;
+    }
+
     pub fn increment_points(&mut self) {
         self.points += 30
     }
@@ -94,14 +105,27 @@ impl GameState {
         (self.points as u64 / self
             .stopwatch
             .elapsed()
-            .as_secs())
+            .as_secs()
+            .max(1))
         as i32
     }
 
     pub fn score(&self) -> NewScore {
         NewScore {
             name: &self.user,
-            points: self.weighted_points(),
+            points: self.points,
+            weighted_points: self.weighted_points(),
+            played_on: SystemTime::now(),
+            duration_secs: self
+                .stopwatch
+                .elapsed()
+                .as_secs()
+                as _,
+            categories: self
+                .categories
+                .iter()
+                .map(Category::id)
+                .collect()
         }
     }
 }

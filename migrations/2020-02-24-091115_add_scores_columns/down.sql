@@ -1,0 +1,5 @@
+ALTER TABLE scores
+DROP COLUMN IF EXISTS weighted_points,
+DROP COLUMN IF EXISTS played_on,
+DROP COLUMN IF EXISTS duration,
+DROP COLUMN IF EXISTS categories;

@@ -1,0 +1,7 @@
+{% macro format_hms(hms) %}
+    {{ hms.h }}:{{ hms.m }}:{{ hms.s }}
+{% endmacro format_hms %}
+
+{% macro format_ymd(ymd) %}
+    {{ ymd.d }}.{{ ymd.m }}.{{ ymd.y }}
+{% endmacro format_hms %}

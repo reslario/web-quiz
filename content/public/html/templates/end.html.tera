@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+{% import "macros/table_macros" as table_macros %}
 <head>
     <meta charset="UTF-8">
     <title>Ende</title>
@@ -8,38 +9,14 @@
 <p>Du bist auf Platz #{{ placement }} gelandet.</p>
 <p>Die Top-3:</p>
 <table>
-    <tr>
-        <th>User</th>
-        <th>Punkte</th>
-    </tr>
-    {% for score in top_three -%}
-    <tr>
-        <td>{{ score.name }}</td>
-        <td>{{ score.points }}</td>
-    </tr>
-    {%- endfor %}
+    {{ table_macros::table_headers() }}
+    {{ table_macros::score_rows(scores = top_three) }}
 </table>
 <table>
-    <tr>
-        <th>User</th>
-        <th>Punkte</th>
-    </tr>
-    {% for score in higher -%}
-    <tr>
-        <td>{{ score.name }}</td>
-        <td>{{ score.points }}</td>
-    </tr>
-    {%- endfor %}
-    <tr>
-        <td><b>{{ user_score.name }}</b></td>
-        <td><b>{{ user_score.points }}</b></td>
-    </tr>
-    {% for score in lower -%}
-    <tr>
-        <td>{{ score.name }}</td>
-        <td>{{ score.points }}</td>
-    </tr>
-    {%- endfor %}
+    {{ table_macros::table_headers() }}
+    {{ table_macros::score_rows(scores = higher) }}
+    {{ table_macros::score_rows(scores = [user_score]) }}
+    {{ table_macros::score_rows(scores = higher) }}
 </table>
 </body>
 </html>

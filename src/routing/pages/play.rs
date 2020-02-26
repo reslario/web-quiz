@@ -1,7 +1,9 @@
 use {
     serde::Serialize,
+    chrono::Datelike,
     diesel::QueryResult,
     super::start::Settings,
+    std::time::{Duration, SystemTime},
     rocket_contrib::templates::Template,
     rand::{
         thread_rng,
@@ -20,11 +22,11 @@ use {
         game::{GameState, AlreadyUsed, QuestionError, pseudo_shuffle, correct_ratio},
         db::{
             DbConn,
+            CategoryId,
             models::{Category, Question, Score}
         }
     }
 };
-use crate::models::db::CategoryId;
 
 #[derive(Serialize)]
 struct DisplayData<'a> {
@@ -201,19 +203,92 @@ impl <'f> rocket::request::FromForm<'f> for NewCategories {
 #[post("/play/resume", data = "<new>")]
 pub fn resume(new: Form<NewCategories>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
     game_state.stopwatch.resume();
-    game_state.categories = Category::load_with_ids(&new.categories, &conn)
+    Category::load_with_ids(&new.categories, &conn)
+        .map(|cats| game_state.set_categories(cats))
         .or_500()?;
 
     Ok(Redirect::to("/play"))
 }
 
 #[derive(Serialize)]
-struct Results<'a> {
-    user_score: &'a Score,
+struct Results {
+    user_score: DisplayScore,
     placement: u64,
-    higher: &'a [Score],
-    lower: &'a [Score],
-    top_three: &'a [Score]
+    higher: Vec<DisplayScore>,
+    lower: Vec<DisplayScore>,
+    top_three: Vec<DisplayScore>
+}
+
+#[derive(Serialize)]
+struct DisplayScore {
+    name: String,
+    points: i32,
+    weighted_points: i32,
+    played_on: Ymd,
+    duration: Hms,
+    categories: Vec<Category>
+}
+
+impl DisplayScore {
+    pub fn from_score(score: Score, conn: &DbConn) -> QueryResult<DisplayScore> {
+        let categories = Category::load_with_ids(&score.categories, conn)?;
+        Ok(DisplayScore {
+            name: score.name,
+            points: score.points,
+            weighted_points: score.weighted_points,
+            played_on: score.played_on.into(),
+            duration: score.duration.into(),
+            categories
+        })
+    }
+}
+
+#[derive(Serialize)]
+struct Ymd {
+    y: u16,
+    m: u8,
+    d: u8
+}
+
+impl From<SystemTime> for Ymd {
+    fn from(st: SystemTime) -> Self {
+        let timestamp = st
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default();
+        let date = chrono::naive::NaiveDateTime::from_timestamp(
+            timestamp.as_secs() as _,
+            0
+        ).date();
+
+        Ymd {
+            y: date.year() as _,
+            m: date.month() as _,
+            d: date.day() as _
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct Hms {
+    h: u32,
+    m: u32,
+    s: u32
+}
+
+impl From<Duration> for Hms {
+    fn from(dur: Duration) -> Self {
+        let dur = chrono::Duration::from_std(dur)
+            .unwrap_or(chrono::Duration::zero());
+        let h = dur.num_hours();
+        let m = dur.num_minutes() - h * 60;
+        let s = dur.num_seconds() - m * 60;
+
+        Hms {
+            h: h as _,
+            m: m as _,
+            s: s as _
+        }
+    }
 }
 
 #[get("/play/end")]
@@ -227,13 +302,25 @@ pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
     let (higher, lower) = score.neighbours(&conn).or_500()?;
     let top_three = Score::top_three(&conn).or_500()?;
 
+    let user_score = DisplayScore::from_score(score, &conn).or_500()?;
+    let higher = display_scores(higher, &conn).or_500()?;
+    let lower = display_scores(lower, &conn).or_500()?;
+    let top_three = display_scores(top_three, &conn).or_500()?;
+
     Ok(Template::render("end", Results {
-        user_score: &score,
+        user_score,
         placement,
-        higher: &higher,
-        lower: &lower,
-        top_three: &top_three
+        higher,
+        lower,
+        top_three
     }))
+}
+
+fn display_scores(scores: Vec<Score>, conn: &DbConn) -> QueryResult<Vec<DisplayScore>> {
+    scores
+        .into_iter()
+        .map(|score| DisplayScore::from_score(score, &conn))
+        .collect()
 }
 
 #[get("/play/use_joker")]

@@ -37,6 +37,10 @@ table! {
         id -> Int4,
         name -> Text,
         points -> Int4,
+        weighted_points -> Int4,
+        played_on -> Timestamp,
+        duration -> Int8,
+        categories -> Array<Int4>,
     }
 }
 

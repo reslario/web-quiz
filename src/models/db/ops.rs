@@ -56,9 +56,9 @@ macro_rules! impl_from_form_value_for_id {
     };
 }
 
-#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Hash)]
+#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
 #[sql_type = "diesel::sql_types::Integer"]
-pub struct CategoryId(i32);
+pub struct CategoryId(pub(super) i32);
 
 impl_to_sql_for_id!(CategoryId);
 impl_from_form_value_for_id!(CategoryId);
@@ -83,9 +83,9 @@ impl Category {
     }
 }
 
-#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Hash)]
+#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Hash, Clone)]
 #[sql_type = "diesel::sql_types::Integer"]
-pub struct QuestionId(i32);
+pub struct QuestionId(pub(super) i32);
 
 impl_to_sql_for_id!(QuestionId);
 impl_from_form_value_for_id!(QuestionId);
