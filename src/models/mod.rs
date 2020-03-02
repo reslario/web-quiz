@@ -3,3 +3,4 @@ pub mod web;
 pub mod game;
 pub mod account;
 pub mod stopwatch;
+pub mod tera;

@@ -7,7 +7,11 @@ mod routing;
 mod models;
 
 use {
-    rocket::{routes, catchers},
+    rocket::{
+        routes,
+        catchers,
+        fairing::Fairing
+    },
     rocket_contrib::templates::Template
 };
 
@@ -35,9 +39,15 @@ fn main() {
         .register(catchers![
             routing::catchers::unauthorized
         ])
-        .attach(Template::fairing())
+        .attach(templates())
         .attach(models::db::DbConn::fairing())
         .manage(models::web::init_game_states())
         .manage(models::web::init_admin_sessions())
         .launch();
+}
+
+fn templates() -> impl Fairing {
+    Template::custom(|engines| {
+        crate::models::tera::configure(&mut engines.tera)
+    })
 }
