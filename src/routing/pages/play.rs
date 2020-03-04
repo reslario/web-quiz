@@ -4,10 +4,9 @@ use {
     diesel::QueryResult,
     super::start::Settings,
     std::time::{Duration, SystemTime},
-    rocket_contrib::templates::Template,
-    rand::{
-        thread_rng,
-        seq::index::sample
+    rocket_contrib::{
+        json::Json,
+        templates::Template
     },
     rocket::{
         get,
@@ -19,7 +18,7 @@ use {
     },
     crate::models::{
         web::{NewSession, NewGameState, SyncedGameState, Or500, EndGame},
-        game::{GameState, AlreadyUsed, QuestionError, pseudo_shuffle, correct_ratio},
+        game::{GameState, QuestionError, JokerError, pseudo_shuffle, correct_ratio},
         db::{
             DbConn,
             CategoryId,
@@ -31,18 +30,12 @@ use {
 #[derive(Serialize)]
 struct DisplayData<'a> {
     question: &'a str,
-    answers: Vec<Answer<'a>>,
+    answers: Vec<&'a str>,
     category: &'a str,
     points: i32,
     joker: bool,
     ratio: u8,
     elapsed_secs: u64
-}
-
-#[derive(Serialize)]
-pub struct Answer<'a> {
-    pub string: &'a str,
-    disabled: bool
 }
 
 impl <'a> DisplayData<'a> {
@@ -52,7 +45,6 @@ impl <'a> DisplayData<'a> {
             .iter()
             .map(String::as_str)
             .chain(std::iter::once(question.correct.as_str()))
-            .map(|string| Answer { string, disabled: false })
             .collect::<Vec<_>>();
         pseudo_shuffle(&mut answers);
 
@@ -65,19 +57,6 @@ impl <'a> DisplayData<'a> {
             ratio,
             elapsed_secs
         }
-    }
-
-    pub fn apply_joker(&mut self, correct: &str) {
-        let indices = sample(&mut thread_rng(), 3, 2);
-        self.answers
-            .iter_mut()
-            .filter(|a| a.string != correct)
-            .enumerate()
-            .filter(|(i, _)| indices
-                .iter()
-                .find(|id| id == i)
-                .is_some()
-            ).for_each(|(_, a)| a.disabled = true)
     }
 }
 
@@ -323,34 +302,20 @@ fn display_scores(scores: Vec<Score>, conn: &DbConn) -> QueryResult<Vec<DisplayS
         .collect()
 }
 
+#[derive(Serialize, Debug)]
+pub struct Joker {
+    incorrect: [String; 2]
+}
+
 #[get("/play/use_joker")]
-pub fn use_joker(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
-    let allowed = match game_state.use_joker() {
-        Ok(()) => true,
-        Err(AlreadyUsed) => false
-    };
-    let (cat, q) = game_state.current_question().or_500()?;
-
-    let ratio = correct_ratio(q, &conn)
-        .or_500()?;
-
-    let elapsed_secs = game_state
-        .stopwatch
-        .elapsed()
-        .as_secs();
-
-    let mut display_data = DisplayData::new(
-        q,
-        &cat.name,
-        game_state.points,
-        false,
-        ratio,
-        elapsed_secs
-    );
-
-    if allowed {
-        display_data.apply_joker(&q.correct)
-    }
-
-    Ok(Template::render("play", display_data))
+pub fn use_joker(mut game_state: SyncedGameState) -> Result<Json<Joker>, Status> {
+    game_state.use_joker()
+        .map(|[ans1, ans2]| Joker {
+            incorrect: [ans1.into(), ans2.into()]
+        })
+        .map(Json)
+        .map_err(|e| match e {
+            JokerError::AlreadyUsed => Status::Unauthorized,
+            JokerError::NoQuestion => Status::InternalServerError
+        })
 }

@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <title>Play</title>
+    <script src="/content/static/js/joker.js"></script>
 </head>
 <body>
 <span>{{ category }}</span>
 <p>{{ question }}</p>
 <form method="post" action="/play/answer">
-{% for ans in answers -%}
-<button type="submit" name="answer"
-        {% if ans.disabled %}
-        disabled
-        {% endif %}
-        value="{{ ans.string }}">{{ ans.string }}
-</button>
-{%- endfor %}
+    <div id="answers">
+        {% for ans in answers -%}
+            <button type="submit" name="answer" value="{{ ans }}">
+                {{ ans }}
+            </button>
+            {%- endfor %}
+    </div>
 </form>
 <span>Punkte: {{ points }}</span>
 {% if joker -%}
-<a href="/play/use_joker">use joker</a>
+<button id="joker" onclick="window.useJoker()">Joker einsetzen</button>
 {%- endif %}
 <span>Vergangene Zeit: {{ elapsed_secs }}</span>
 <p>Diese Frage wird zu {{ ratio }}% richtig beantwortet.</p>

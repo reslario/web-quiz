@@ -10,7 +10,6 @@ use {
         collections::{VecDeque, HashSet}
     },
     crate::{
-        routing::play::Answer,
         models::stopwatch::Stopwatch,
         models::db::{
             QuestionId,
@@ -93,12 +92,25 @@ impl GameState {
         self.points += 30
     }
 
-    pub fn use_joker(&mut self) -> Result<(), AlreadyUsed> {
+    pub fn use_joker(&mut self) -> Result<[&str; 2], JokerError> {
         if !self.joker {
-            Err(AlreadyUsed)
+            Err(JokerError::AlreadyUsed)
         } else {
-            Ok(self.joker = false)
+            self.joker = false;
+            self.two_incorrect()
+                .ok_or(JokerError::NoQuestion)
         }
+    }
+
+    fn two_incorrect(&self) -> Option<[&str; 2]> {
+        self.current_question
+            .as_ref()
+            .map(|q| q.incorrect
+                .choose_multiple(&mut thread_rng(), 2)
+            ).and_then(|mut iter| Some([
+            iter.next()?.as_str(),
+            iter.next()?.as_str()
+        ]))
     }
 
     fn weighted_points(&self) -> i32 {
@@ -130,14 +142,17 @@ impl GameState {
     }
 }
 
-pub struct AlreadyUsed;
+pub enum JokerError {
+    AlreadyUsed,
+    NoQuestion
+}
 
-pub fn pseudo_shuffle(items: &mut [Answer]) {
-    items.sort_by_cached_key(|a| a.string
+pub fn pseudo_shuffle(items: &mut [&str]) {
+    items.sort_by_cached_key(|ans| ans
         .chars()
         .map(|c| c as usize)
         .sum::<usize>()
-        / a.string.len().max(1)
+        / ans.len().max(1)
     )
 }
 

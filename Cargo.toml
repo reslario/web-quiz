@@ -20,7 +20,7 @@ chrono = "0.4.10"
 [dependencies.rocket_contrib]
 version = "0.4.3"
 default-features = false
-features = ["tera_templates", "serve", "diesel_postgres_pool"]
+features = ["tera_templates", "serve", "diesel_postgres_pool", "json"]
 
 [dependencies.diesel]
 version = "1.4.3"
