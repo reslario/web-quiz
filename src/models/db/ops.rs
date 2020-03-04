@@ -91,6 +91,8 @@ impl_to_sql_for_id!(QuestionId);
 impl_from_form_value_for_id!(QuestionId);
 
 impl Question {
+    const PER_SET: usize = 100;
+
     pub fn id(&self) -> QuestionId {
         QuestionId(self.id)
     }
@@ -117,10 +119,22 @@ impl Question {
     pub(in crate::models) fn load_set(categories: &[Category], answered: &[QuestionId], conn: &PgConnection) -> QueryResult<Vec<Question>> {
         use schema::questions::dsl::*;
 
-        Question::belonging_to(categories)
-            .filter(id.ne(all(answered)))
-            .limit(100)
-            .load(conn)
+        let per_category = (Self::PER_SET / categories.len()) as i64;
+        let mut result = Vec::with_capacity(Self::PER_SET);
+
+        // this might not always give us the full PER_SET, since
+        // a category might not have enough unanswered questions
+        // remaining, but it's whatever
+        categories
+            .iter()
+            .map(|cat| Question::belonging_to(cat)
+                .filter(id.ne(all(answered)))
+                .limit(per_category)
+                .load(conn)
+                .map(|qs| result.extend(qs))
+            ).collect::<Result<_, _>>()?;
+
+        Ok(result)
     }
 
     pub fn stats(&self) -> Stats {
