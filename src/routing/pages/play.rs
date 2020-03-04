@@ -95,7 +95,7 @@ struct Intermission<'a> {
 
 #[get("/play")]
 pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
-    let (points, joker) = (game_state.points, game_state.joker);
+    let (points, joker) = (game_state.points(), game_state.joker());
     let elapsed_secs = game_state
         .stopwatch
         .elapsed()
@@ -139,8 +139,8 @@ fn intermission(game_state: &mut SyncedGameState, conn: &DbConn) -> QueryResult<
 fn render_intermission(game_state: &SyncedGameState, categories: &[Category]) -> Template {
      Template::render("play_error", Intermission {
         categories,
-        points: game_state.points,
-        joker: game_state.joker
+        points: game_state.points(),
+        joker: game_state.joker()
      })
 }
 

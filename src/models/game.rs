@@ -27,12 +27,12 @@ pub enum QuestionError {
 
 #[derive(Debug, Default)]
 pub struct GameState {
-    pub user: String,
+    user: String,
     categories: Vec<Category>,
     pub current_question: Option<Question>,
-    pub questions: VecDeque<Question>,
-    pub points: i32,
-    pub joker: bool,
+    questions: VecDeque<Question>,
+    points: i32,
+    joker: bool,
     pub stopwatch: Stopwatch,
     answered: Vec<QuestionId>,
     total_categories: HashSet<Category>
@@ -140,6 +140,14 @@ impl GameState {
                 .map(Category::id)
                 .collect()
         }
+    }
+
+    pub fn points(&self) -> i32 {
+        self.points
+    }
+
+    pub fn joker(&self) -> bool {
+        self.joker
     }
 }
 
