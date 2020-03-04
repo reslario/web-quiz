@@ -220,14 +220,14 @@ impl Score {
         use schema::scores::dsl::*;
 
         let higher = scores
-            .order(points.desc())
-            .filter(points.gt(self.points))
+            .order(weighted_points.desc())
+            .filter(weighted_points.gt(self.weighted_points))
             .limit(10)
             .load(conn)?;
 
         let lower = scores
-            .order(points.desc())
-            .filter(points.lt(self.points))
+            .order(weighted_points.desc())
+            .filter(weighted_points.lt(self.weighted_points))
             .limit(10)
             .load(conn)?;
 

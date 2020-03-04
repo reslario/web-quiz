@@ -16,7 +16,7 @@
     {{ table_macros::table_headers() }}
     {{ table_macros::score_rows(scores = higher) }}
     {{ table_macros::score_rows(scores = [user_score]) }}
-    {{ table_macros::score_rows(scores = higher) }}
+    {{ table_macros::score_rows(scores = lower) }}
 </table>
 </body>
 </html>
