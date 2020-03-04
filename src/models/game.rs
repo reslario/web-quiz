@@ -13,7 +13,8 @@ use {
         models::stopwatch::Stopwatch,
         models::db::{
             QuestionId,
-            models::{Question, Category, NewScore}
+            CategoryId,
+            models::{Question, Category, NewScore, Score}
         }
     }
 };
@@ -161,4 +162,60 @@ pub fn correct_ratio(question: &Question, conn: &PgConnection) -> QueryResult<u8
         .stats()
         .load(conn)
         .map(|stats| stats.correct_ratio())
+}
+
+pub struct Scores {
+    pub placement: u64,
+    pub top_three: Vec<Score>,
+    pub lower: Vec<Score>,
+    pub higher: Vec<Score>,
+}
+
+pub fn scores(user_score: &Score, conn: &PgConnection) -> QueryResult<Scores> {
+    let (higher, lower) = user_score.neighbours(&conn)?;
+
+    Ok(Scores {
+        placement: user_score.placement(conn)?,
+        top_three: Score::top_three(conn)?,
+        lower,
+        higher
+    })
+}
+
+pub enum Answered {
+    Correctly,
+    Incorrectly
+}
+
+pub enum AnswerError {
+    Query(diesel::result::Error),
+    NoQuestion
+}
+
+pub fn answer(answer: &str, game_state: &mut GameState, conn: &PgConnection) -> Result<Answered, AnswerError> {
+    let cq = game_state
+        .current_question
+        .as_ref()
+        .ok_or(AnswerError::NoQuestion)?;
+    if answer == cq.correct {
+        update_stats(cq, true, conn)?;
+        game_state.increment_points();
+        Ok(Answered::Correctly)
+    } else {
+        update_stats(cq, false, conn)?;
+        Ok(Answered::Incorrectly)
+    }
+}
+
+fn update_stats(question: &Question, correct: bool, conn: &PgConnection) -> Result<(), AnswerError> {
+    if correct {
+        question.stats().add_correct(conn)
+    } else {
+        question.stats().add_incorrect(conn)
+    }.map_err(AnswerError::Query)
+}
+
+pub fn new_game_state(user: String, categories: &[CategoryId], conn: &PgConnection) -> QueryResult<GameState> {
+    Category::load_with_ids(&categories, &conn)
+        .map(|cats| GameState::new(user, cats))
 }

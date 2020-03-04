@@ -17,8 +17,9 @@ use {
         request::{Form, FormItems, FromFormValue}
     },
     crate::models::{
+        self,
         web::{NewSession, NewGameState, SyncedGameState, Or500, EndGame},
-        game::{GameState, QuestionError, JokerError, pseudo_shuffle, correct_ratio},
+        game::{QuestionError, JokerError, Answered, pseudo_shuffle, correct_ratio},
         db::{
             DbConn,
             CategoryId,
@@ -62,15 +63,12 @@ impl <'a> DisplayData<'a> {
 
 #[post("/play/new_game", data = "<settings>")]
 pub fn new_game(settings: Form<Settings>, _sess: NewSession, new_game_state: NewGameState, conn: DbConn) -> Result<Redirect, Status> {
-    let categories = Category::load_with_ids(&settings.categories, &conn)
-        .or_500()?;
+    let settings = settings.into_inner();
 
-    new_game_state.set(GameState::new(
-        settings.0.user,
-        categories,
-    ));
-
-    Ok(Redirect::to("/play"))
+    models::game::new_game_state(settings.user, &settings.categories, &conn)
+        .map(|state| new_game_state.set(state))
+        .map(|_| Redirect::to("/play"))
+        .or_500()
 }
 
 #[derive(FromForm, Debug)]
@@ -80,23 +78,12 @@ pub struct Response {
 
 #[post("/play/answer", data = "<response>")]
 pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
-    let cq = game_state
-        .current_question
-        .as_ref()
-        .or_500()?;
-    if response.answer == cq.correct {
-        cq.stats()
-            .add_correct(&conn)
-            .or_500()?;
-        drop(cq);
-        game_state.increment_points();
-        Ok(Redirect::to("/play"))
-    } else {
-        cq.stats()
-            .add_incorrect(&conn)
-            .or_500()?;
-        Ok(Redirect::to("/play/end"))
-    }
+    models::game::answer(&response.answer, &mut *game_state, &conn)
+        .map(|ans| match ans {
+            Answered::Correctly => Redirect::to("/play"),
+            Answered::Incorrectly => Redirect::to("/play/end")
+        })
+        .or_500()
 }
 
 #[derive(Debug, Serialize)]
@@ -272,23 +259,21 @@ impl From<Duration> for Hms {
 
 #[get("/play/end")]
 pub fn end_game(end: EndGame, conn: DbConn) -> Result<Template, Status> {
-    let score = Score::insert(
+    let user_score = Score::insert(
         &end.game_state.score(),
         &conn
     ).or_500()?;
 
-    let placement = score.placement(&conn).or_500()?;
-    let (higher, lower) = score.neighbours(&conn).or_500()?;
-    let top_three = Score::top_three(&conn).or_500()?;
+    let scores = models::game::scores(&user_score, &conn).or_500()?;
 
-    let user_score = DisplayScore::from_score(score, &conn).or_500()?;
-    let higher = display_scores(higher, &conn).or_500()?;
-    let lower = display_scores(lower, &conn).or_500()?;
-    let top_three = display_scores(top_three, &conn).or_500()?;
+    let user_score = DisplayScore::from_score(user_score, &conn).or_500()?;
+    let higher = display_scores(scores.higher, &conn).or_500()?;
+    let lower = display_scores(scores.lower, &conn).or_500()?;
+    let top_three = display_scores(scores.top_three, &conn).or_500()?;
 
     Ok(Template::render("end", Results {
         user_score,
-        placement,
+        placement: scores.placement,
         higher,
         lower,
         top_three
