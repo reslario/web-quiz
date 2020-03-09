@@ -78,6 +78,7 @@ pub struct Response {
 
 #[post("/play/answer", data = "<response>")]
 pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
+    game_state.can_proceed = true;
     models::game::answer(&response.answer, &mut *game_state, &conn)
         .map(|ans| match ans {
             Answered::Correctly => Redirect::to("/play"),
@@ -100,6 +101,23 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
         .stopwatch
         .elapsed()
         .as_secs();
+    if game_state.can_proceed {
+        game_state.can_proceed = false;
+        next_question(points, joker, elapsed_secs, &mut game_state, &conn)
+    } else {
+        game_state.current_question()
+            .or_500()
+            .and_then(|(cat, cq)| stay(points, joker, elapsed_secs, &conn, cat, cq))
+    }
+}
+
+fn next_question(
+    points: i32,
+    joker: bool,
+    elapsed_secs: u64,
+    game_state: &mut SyncedGameState,
+    conn: &DbConn
+) -> Result<Template, Status> {
     let (cat, next_q) = match game_state.next_question() {
         Some(v) => v,
         None => match game_state.load_more_questions(&conn) {
@@ -110,7 +128,7 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
                 QuestionError::Query(_) =>
                     Err(Status::InternalServerError),
                 QuestionError::NoneRemaining =>
-                    intermission(&mut game_state, &conn)
+                    intermission(game_state, &conn)
                         .or_500()
             }
         }
@@ -121,6 +139,27 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
 
     Ok(Template::render("play", DisplayData::new(
         next_q,
+        &cat.name,
+        points,
+        joker,
+        ratio,
+        elapsed_secs
+    )))
+}
+
+fn stay(
+    points: i32,
+    joker: bool,
+    elapsed_secs: u64,
+    conn: &DbConn,
+    cat: &Category,
+    cq: &Question
+) -> Result<Template, Status> {
+    let ratio = correct_ratio(cq, &conn)
+        .or_500()?;
+
+    Ok(Template::render("play", DisplayData::new(
+        cq,
         &cat.name,
         points,
         joker,

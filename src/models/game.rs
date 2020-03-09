@@ -30,6 +30,7 @@ pub struct GameState {
     user: String,
     categories: Vec<Category>,
     pub current_question: Option<Question>,
+    pub can_proceed: bool,
     questions: VecDeque<Question>,
     points: i32,
     joker: bool,
@@ -43,6 +44,7 @@ impl GameState {
         GameState {
             user,
             categories: categories.clone(),
+            can_proceed: true,
             joker: true,
             stopwatch: Stopwatch::start(),
             total_categories: HashSet::from_iter(categories),
