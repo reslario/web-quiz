@@ -19,7 +19,7 @@ use {
     crate::models::{
         self,
         web::{NewSession, NewGameState, SyncedGameState, Or500, EndGame},
-        game::{QuestionError, JokerError, Answered, pseudo_shuffle, correct_ratio},
+        game::{QuestionError, JokerError, Answered, NextQuestionError, pseudo_shuffle, correct_ratio},
         db::{
             DbConn,
             CategoryId,
@@ -27,7 +27,6 @@ use {
         }
     }
 };
-use crate::models::game::NextQuestionError;
 
 #[derive(Serialize)]
 struct DisplayData<'a> {
@@ -70,28 +69,6 @@ pub fn new_game(settings: Form<Settings>, _sess: NewSession, new_game_state: New
         .map(|state| new_game_state.set(state))
         .map(|_| Redirect::to("/play"))
         .or_500()
-}
-
-#[derive(FromForm, Debug)]
-pub struct Response {
-    answer: String
-}
-
-#[post("/play/answer", data = "<response>")]
-pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
-    models::game::answer(&response.answer, &mut *game_state, &conn)
-        .map(|ans| match ans {
-            Answered::Correctly => Redirect::to("/play"),
-            Answered::Incorrectly => Redirect::to("/play/failed")
-        })
-        .or_500()
-}
-
-#[derive(Debug, Serialize)]
-struct Intermission<'a> {
-    categories: &'a [Category],
-    points: i32,
-    joker: bool
 }
 
 #[get("/play")]
@@ -147,6 +124,28 @@ fn load_more_questions(mut game_state: SyncedGameState, conn: DbConn) -> Result<
     }
 }
 
+#[derive(Debug, Serialize)]
+struct Intermission<'a> {
+    categories: &'a [Category],
+    points: i32,
+    joker: bool
+}
+
+fn intermission(game_state: &mut SyncedGameState, conn: &DbConn) -> QueryResult<Template> {
+    game_state.stopwatch.pause();
+    Category::load_all(conn)
+        .map(|categories| render_intermission(&game_state, &categories))
+
+}
+
+fn render_intermission(game_state: &SyncedGameState, categories: &[Category]) -> Template {
+    Template::render("play_error", Intermission {
+        categories,
+        points: game_state.points(),
+        joker: game_state.joker()
+    })
+}
+
 fn stay(
     points: i32,
     joker: bool,
@@ -166,21 +165,6 @@ fn stay(
         ratio,
         elapsed_secs
     )))
-}
-
-fn intermission(game_state: &mut SyncedGameState, conn: &DbConn) -> QueryResult<Template> {
-    game_state.stopwatch.pause();
-    Category::load_all(conn)
-        .map(|categories| render_intermission(&game_state, &categories))
-
-}
-
-fn render_intermission(game_state: &SyncedGameState, categories: &[Category]) -> Template {
-     Template::render("play_error", Intermission {
-        categories,
-        points: game_state.points(),
-        joker: game_state.joker()
-     })
 }
 
 #[derive(Debug)]
@@ -213,6 +197,39 @@ pub fn resume(new: Form<NewCategories>, mut game_state: SyncedGameState, conn: D
         .or_500()?;
 
     Ok(Redirect::to("/play"))
+}
+
+#[derive(FromForm, Debug)]
+pub struct Response {
+    answer: String
+}
+
+#[post("/play/answer", data = "<response>")]
+pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
+    models::game::answer(&response.answer, &mut *game_state, &conn)
+        .map(|ans| match ans {
+            Answered::Correctly => Redirect::to("/play"),
+            Answered::Incorrectly => Redirect::to("/play/failed")
+        })
+        .or_500()
+}
+
+#[derive(Serialize, Debug)]
+pub struct Joker {
+    incorrect: [String; 2]
+}
+
+#[get("/play/use_joker")]
+pub fn use_joker(mut game_state: SyncedGameState) -> Result<Json<Joker>, Status> {
+    game_state.use_joker()
+        .map(|[ans1, ans2]| Joker {
+            incorrect: [ans1.into(), ans2.into()]
+        })
+        .map(Json)
+        .map_err(|e| match e {
+            JokerError::AlreadyUsed => Status::Unauthorized,
+            JokerError::NoQuestion => Status::InternalServerError
+        })
 }
 
 #[derive(Serialize)]
@@ -324,24 +341,6 @@ fn display_scores(scores: Vec<Score>, conn: &DbConn) -> QueryResult<Vec<DisplayS
         .into_iter()
         .map(|score| DisplayScore::from_score(score, &conn))
         .collect()
-}
-
-#[derive(Serialize, Debug)]
-pub struct Joker {
-    incorrect: [String; 2]
-}
-
-#[get("/play/use_joker")]
-pub fn use_joker(mut game_state: SyncedGameState) -> Result<Json<Joker>, Status> {
-    game_state.use_joker()
-        .map(|[ans1, ans2]| Joker {
-            incorrect: [ans1.into(), ans2.into()]
-        })
-        .map(Json)
-        .map_err(|e| match e {
-            JokerError::AlreadyUsed => Status::Unauthorized,
-            JokerError::NoQuestion => Status::InternalServerError
-        })
 }
 
 #[derive(Serialize)]
