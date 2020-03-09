@@ -30,7 +30,7 @@ pub struct GameState {
     user: String,
     categories: Vec<Category>,
     pub current_question: Option<Question>,
-    pub can_proceed: bool,
+    can_proceed: bool,
     questions: VecDeque<Question>,
     points: i32,
     joker: bool,
@@ -52,13 +52,20 @@ impl GameState {
         }
     }
 
-    pub fn next_question(&mut self) -> Option<(&Category, &Question)> {
-        self.current_question
-            .as_ref()
-            .map(Question::id)
-            .map(|id| self.answered.push(id));
-        self.current_question = self.questions.pop_front();
-        self.current_question()
+    pub fn next_question(&mut self) -> Result<(&Category, &Question), NextQuestionError> {
+        if self.can_proceed {
+            self.can_proceed = false;
+            self.current_question
+                .as_ref()
+                .map(Question::id)
+                .map(|id| self.answered.push(id));
+            self.current_question = self.questions.pop_front();
+            self.current_question()
+                .ok_or(NextQuestionError::NoneRemaining)
+        } else {
+            Err(NextQuestionError::HasNotAnswered)
+        }
+
     }
 
     pub fn current_question(&self) -> Option<(&Category, &Question)> {
@@ -72,6 +79,7 @@ impl GameState {
     }
 
     pub fn load_more_questions(&mut self, conn: &PgConnection) -> Result<(), QuestionError> {
+        self.can_proceed = true;
         Question::load_set(&self.categories, &self.answered, conn)
             .map_err(QuestionError::Query)
             .into_iter()
@@ -153,6 +161,11 @@ impl GameState {
     }
 }
 
+pub enum NextQuestionError {
+    HasNotAnswered,
+    NoneRemaining
+}
+
 pub enum JokerError {
     AlreadyUsed,
     NoQuestion
@@ -207,6 +220,9 @@ pub fn answer(answer: &str, game_state: &mut GameState, conn: &PgConnection) -> 
         .current_question
         .as_ref()
         .ok_or(AnswerError::NoQuestion)?;
+
+    game_state.can_proceed = true;
+
     if answer == cq.correct {
         update_stats(cq, true, conn)?;
         game_state.increment_points();

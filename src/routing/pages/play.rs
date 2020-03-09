@@ -27,6 +27,7 @@ use {
         }
     }
 };
+use crate::models::game::NextQuestionError;
 
 #[derive(Serialize)]
 struct DisplayData<'a> {
@@ -78,7 +79,6 @@ pub struct Response {
 
 #[post("/play/answer", data = "<response>")]
 pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: DbConn) -> Result<Redirect, Status> {
-    game_state.can_proceed = true;
     models::game::answer(&response.answer, &mut *game_state, &conn)
         .map(|ans| match ans {
             Answered::Correctly => Redirect::to("/play"),
@@ -101,13 +101,15 @@ pub fn continue_game(mut game_state: SyncedGameState, conn: DbConn) -> Result<Te
         .stopwatch
         .elapsed()
         .as_secs();
-    if game_state.can_proceed {
-        game_state.can_proceed = false;
-        next_question(points, joker, elapsed_secs, &mut game_state, &conn)
-    } else {
-        game_state.current_question()
+
+    match game_state.next_question() {
+        Ok((cat, next_q)) =>
+            next_question(points, joker, elapsed_secs, cat, next_q, &conn),
+        Err(NextQuestionError::HasNotAnswered) => game_state
+            .current_question()
             .or_500()
-            .and_then(|(cat, cq)| stay(points, joker, elapsed_secs, &conn, cat, cq))
+            .and_then(|(cat, cq)| stay(points, joker, elapsed_secs, &conn, cat, cq)),
+        Err(NextQuestionError::NoneRemaining) => load_more_questions(game_state, conn)
     }
 }
 
@@ -115,25 +117,10 @@ fn next_question(
     points: i32,
     joker: bool,
     elapsed_secs: u64,
-    game_state: &mut SyncedGameState,
+    cat: &Category,
+    next_q: &Question,
     conn: &DbConn
 ) -> Result<Template, Status> {
-    let (cat, next_q) = match game_state.next_question() {
-        Some(v) => v,
-        None => match game_state.load_more_questions(&conn) {
-            Ok(()) => game_state
-                .next_question()
-                .or_500()?,
-            Err(e) => return match e {
-                QuestionError::Query(_) =>
-                    Err(Status::InternalServerError),
-                QuestionError::NoneRemaining =>
-                    intermission(game_state, &conn)
-                        .or_500()
-            }
-        }
-    };
-
     let ratio = correct_ratio(next_q, &conn)
         .or_500()?;
 
@@ -145,6 +132,19 @@ fn next_question(
         ratio,
         elapsed_secs
     )))
+}
+
+fn load_more_questions(mut game_state: SyncedGameState, conn: DbConn) -> Result<Template, Status> {
+    match game_state.load_more_questions(&conn) {
+        Ok(()) => continue_game(game_state, conn),
+        Err(e) => match e {
+            QuestionError::Query(_) =>
+                Err(Status::InternalServerError),
+            QuestionError::NoneRemaining =>
+                intermission(&mut game_state, &conn)
+                    .or_500()
+        }
+    }
 }
 
 fn stay(
