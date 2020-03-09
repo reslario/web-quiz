@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Falsch geantwortet</title>
+</head>
+<body>
+Das war die falsche Antwort. Du hättest {{ points }} Punkte erreicht,
+was {{ weighted_points }} gewichtete Punkte wären.
+<a href="/">Zurück zum Start</a>
+</body>
+</html>

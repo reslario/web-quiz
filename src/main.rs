@@ -31,6 +31,7 @@ fn main() {
             routing::pages::play::end_game,
             routing::pages::play::use_joker,
             routing::pages::play::resume,
+            routing::pages::play::failed,
             routing::pages::admin::admin,
             routing::pages::admin::verify,
             routing::pages::admin::register,

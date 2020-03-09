@@ -82,7 +82,7 @@ pub fn answer(response: Form<Response>, mut game_state: SyncedGameState, conn: D
     models::game::answer(&response.answer, &mut *game_state, &conn)
         .map(|ans| match ans {
             Answered::Correctly => Redirect::to("/play"),
-            Answered::Incorrectly => Redirect::to("/play/end")
+            Answered::Incorrectly => Redirect::to("/play/failed")
         })
         .or_500()
 }
@@ -342,4 +342,18 @@ pub fn use_joker(mut game_state: SyncedGameState) -> Result<Json<Joker>, Status>
             JokerError::AlreadyUsed => Status::Unauthorized,
             JokerError::NoQuestion => Status::InternalServerError
         })
+}
+
+#[derive(Serialize)]
+struct Failed {
+    points: i32,
+    weighted_points: i32,
+}
+
+#[get("/play/failed")]
+pub fn failed(end: EndGame) -> Template {
+    Template::render("failed", Failed {
+        points: end.game_state.points(),
+        weighted_points: end.game_state.weighted_points()
+    })
 }

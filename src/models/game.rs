@@ -124,7 +124,7 @@ impl GameState {
         ]))
     }
 
-    fn weighted_points(&self) -> i32 {
+    pub fn weighted_points(&self) -> i32 {
         (self.points as u64 / self
             .stopwatch
             .elapsed()

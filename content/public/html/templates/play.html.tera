@@ -23,5 +23,6 @@
 {%- endif %}
 <span>Vergangene Zeit: {{ elapsed_secs }}</span>
 <p>Diese Frage wird zu {{ ratio }}% richtig beantwortet.</p>
+<a href="/play/end">Beenden</a>
 </body>
 </html>
