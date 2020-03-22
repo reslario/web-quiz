@@ -6,7 +6,7 @@
 </head>
 <body>
 Das war die falsche Antwort. Du hättest {{ points }} Punkte erreicht,
-was {{ weighted_points }} gewichtete Punkte wären.
+was {{ weighted_points }} gewichtete Punkte gewesen wären.
 <a href="/">Zurück zum Start</a>
 </body>
 </html>
