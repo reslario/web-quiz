@@ -35,7 +35,12 @@ fn main() {
             routing::pages::admin::admin,
             routing::pages::admin::verify,
             routing::pages::admin::register,
-            routing::pages::admin::add_question
+            routing::pages::admin::add_question,
+            routing::pages::admin::add_category,
+            routing::pages::admin::api::delete_question,
+            routing::pages::admin::api::edit_question,
+            routing::pages::admin::api::all_questions,
+            routing::pages::admin::api::all_categories
         ])
         .register(catchers![
             routing::catchers::unauthorized

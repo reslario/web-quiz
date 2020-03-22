@@ -1,12 +1,16 @@
 use {
     serde::Serialize,
-    diesel::QueryResult,
     serde_repr::Serialize_repr,
-    rocket_contrib::templates::Template,
+    rocket_contrib::{
+        json::Json,
+        templates::Template
+    },
     rocket::{
         uri,
         get,
+        put,
         post,
+        delete,
         FromForm,
         response::Redirect,
         request::{Form, FromFormValue},
@@ -23,14 +27,14 @@ use {
         db::{
             DbConn,
             AdminError,
+            ops::QuestionId,
             models::{Category, Question, NewQuestion, NewCategory}
         },
     }
 };
 
 #[derive(Serialize)]
-struct DisplayData<'a> {
-    categories: &'a [Category],
+struct DisplayData {
     error: Option<RegisterError>
 }
 
@@ -71,17 +75,13 @@ impl UriDisplay<Query> for RegisterError {
 impl_from_uri_param_identity!([Query] RegisterError);
 
 #[get("/admin?<error>")]
-pub fn admin(error: Option<RegisterError>, _guard: AdminGuard, conn: DbConn) -> Result<Template, Status> {
-    Category::load_all(&conn)
-        .as_ref()
-        .map(|categories| Template::render(
-            if error.is_some() { "admin_error" } else { "admin" },
-            DisplayData {
-                categories,
-                error
-            }
-        ))
-        .or_500()
+pub fn admin(error: Option<RegisterError>, _guard: AdminGuard) -> Template {
+    Template::render(
+        if error.is_some() { "admin_error" } else { "admin" },
+        DisplayData {
+            error
+        }
+    )
 }
 
 #[post("/login/verify", data = "<credentials>")]
@@ -111,61 +111,100 @@ pub fn register(credentials: Form<Credentials>, conn: DbConn) -> Redirect {
 }
 
 #[derive(FromForm, Debug)]
-pub struct AddQuestion {
+pub struct FormQuestion {
     question: String,
     correct: String,
     incorrect1: String,
     incorrect2: String,
     incorrect3: String,
-    category: Option<i32>,
-    new_category: Option<String>
+    category: i32,
 }
 
-#[post("/admin/add_question", data = "<add_q>")]
-pub fn add_question(add_q: Form<AddQuestion>, conn: DbConn) -> Result<Redirect, Status> {
-    let (string, correct, incorrect) = (
-        &add_q.question,
-        &add_q.correct,
-        &[
-            add_q.incorrect1.clone(),
-            add_q.incorrect2.clone(),
-            add_q.incorrect3.clone()
-        ]
-    );
+#[post("/admin/add_question", data = "<form>")]
+pub fn add_question(form: Form<FormQuestion>, _guard: AdminGuard, conn: DbConn) -> Result<Redirect, Status> {
+    let FormQuestion {
+        question, correct, incorrect1, incorrect2, incorrect3, category
+    } = form.into_inner();
 
-    add_q.category
-        .map(|category_id| Ok(NewQuestion {
-            category_id,
-            string,
-            correct,
-            incorrect
-        }))
-        .or_else(|| add_q.new_category
-            .as_ref()
-            .map(|cat| new_question_and_category(cat, string, correct, incorrect, &conn))
-        ).map(|res| res
-            .and_then(|new_q| Question::insert(&new_q, &conn))
-        ).or_500()?
-        .or_500()
+    let new = NewQuestion {
+        category_id: category,
+        string: &question,
+        correct: &correct,
+        incorrect: &[incorrect1, incorrect2, incorrect3]
+    };
+
+    Question::insert(&new, &conn)
         .map(|_| Redirect::to("/admin"))
+        .or_500()
 }
 
-fn new_question_and_category<'a>(
-    new_cat: &str,
-    string: &'a str,
-    correct: &'a str,
-    incorrect: &'a [String; 3],
-    conn: &DbConn
-) -> QueryResult<NewQuestion<'a>> {
-        Category::insert(
-            &NewCategory {
-                name: new_cat
-            },
-            &conn
-        ).map(|cat| NewQuestion::with_category(
-            &cat,
-            string,
-            correct,
-            incorrect
-        ))
+#[derive(FromForm)]
+pub struct FormCategory {
+    name: String
+}
+
+#[post("/admin/add_category", data = "<form>")]
+pub fn add_category(form: Form<FormCategory>, _guard: AdminGuard, conn: DbConn) -> Result<Redirect, Status> {
+    let new = NewCategory {
+        name: &form.name
+    };
+
+    Category::insert(&new, &conn)
+        .map(|_| Redirect::to("/admin"))
+        .or_500()
+}
+
+pub mod api {
+    use super::*;
+
+    #[delete("/admin/delete_question/<id>")]
+    pub fn delete_question(id: QuestionId, _guard: AdminGuard, conn: DbConn) -> Result<(), Status> {
+        Question::delete(id, &conn)
+            .or_500()
+    }
+
+    #[put("/admin/edit_question", data = "<question>")]
+    pub fn edit_question(question: Json<Question>, _guard: AdminGuard, conn: DbConn) -> Result<(), Status> {
+        let question = question.into_inner();
+        let new = NewQuestion {
+            category_id: *question.category_id(),
+            string: &question.string,
+            correct: &question.correct,
+            incorrect: &question.incorrect
+        };
+
+        Question::update(question.id(), new, &conn)
+            .map(drop)
+            .or_500()
+    }
+
+    #[derive(Serialize)]
+    pub struct JsonQuestions {
+        questions: Vec<Question>
+    }
+
+    #[get("/admin/all_questions")]
+    pub fn all_questions(_guard: AdminGuard, conn: DbConn) -> Result<Json<JsonQuestions>, Status> {
+        Question::load_all(&conn)
+            .map(|mut questions| {
+                questions.sort_unstable_by_key(Question::id);
+                questions
+            })
+            .map(|questions| JsonQuestions { questions })
+            .map(Json)
+            .or_500()
+    }
+
+    #[derive(Serialize)]
+    pub struct JsonCategories {
+        categories: Vec<Category>
+    }
+
+    #[get("/admin/all_categories")]
+    pub fn all_categories(_guard: AdminGuard, conn: DbConn) -> Result<Json<JsonCategories>, Status> {
+        Category::load_all(&conn)
+            .map(|categories| JsonCategories { categories })
+            .map(Json)
+            .or_500()
+    }
 }

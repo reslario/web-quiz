@@ -1,5 +1,5 @@
 use {
-    serde::Serialize,
+    serde::{Serialize, Deserialize},
     std::time::{Duration, SystemTime},
     diesel::{Identifiable, Queryable, Associations},
     super::{
@@ -11,7 +11,7 @@ use {
 const NUM_ANSWERS: usize = 4;
 const NUM_INCORRECT: usize = NUM_ANSWERS - 1;
 
-#[derive(Identifiable, Queryable, Associations, PartialEq, Debug, Clone)]
+#[derive(Identifiable, Queryable, Associations, Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[belongs_to(Category)]
 #[table_name = "questions"]
 pub struct Question {
@@ -163,7 +163,7 @@ mod insert {
         diesel::Insertable
     };
 
-    #[derive(Insertable, Debug, PartialEq, PartialOrd, Clone)]
+    #[derive(Insertable, AsChangeset, Debug, PartialEq, PartialOrd, Clone)]
     #[table_name = "questions"]
     pub struct NewQuestion<'a> {
         pub category_id: i32,

@@ -3,26 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin</title>
+    <script src="/content/static/js/admin.js"></script>
 </head>
-<body>
 <div>{% block error %} {% endblock error %}</div>
-<p>Frage hinzufügen</p>
-<form method="post" action="/admin/add_question">
+<h1>Frage hinzufügen</h1>
+<form id="addQuestion" method="post" action="/admin/add_question">
     <input type="text" name="question" placeholder="Frage" />
     <input type="text" name="correct" placeholder="Richtige Antwort" />
     {% for i in range(start = 1, end = 4) %}
     <input type="text" name="incorrect{{ i }}" placeholder="Falsche Antwort {{ i }}" />
     {% endfor %}
     <p>Kategorie</p>
-    <select name="category">
-        {% for cat in categories -%}
-        <option value="{{ cat.id }}">{{ cat.name }}</option>
-        {%- endfor %}
-        <option value="">Neue Kategorie...</option>
+    <select id="availableCategories" class="categories" name="category">
     </select>
-    <input type="text" name="new_category" placeholder="Neue Kategorie..." />
     <button type="submit">Hinzufügen</button>
 </form>
+<h1>Kategorie hinzufügen</h1>
+<form id="categoryForm" method="post" action="/admin/add_category">
+    <input type="text" name="name" placeholder="Name">
+    <button type="submit">Hinzufügen</button>
+</form>
+<h1>Fragen</h1>
+<form id="questionForm" action="javascript:void(0)" onsubmit="return false"></form>
+<table id="questions">
+    <tr>
+        <th>ID</th>
+        <th>Kategorie</th>
+        <th>Fragetext</th>
+        <th>Richtige Antwort</th>
+        <th>Falsche Antwort 1</th>
+        <th>Falsche Antwort 2</th>
+        <th>Falsche Antwort 3</th>
+    </tr>
+</table>
+<script>window.fillForms()</script>
 
 <p>Admin hinzufügen</p>
 <form method="post" action="/admin/register">

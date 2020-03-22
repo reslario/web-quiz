@@ -1,5 +1,6 @@
 use {
-    serde::Serialize,
+    derive_more::Deref,
+    serde::{Serialize, Deserialize},
     std::{
         io::Write,
         ops::{Add, Div, Mul}
@@ -10,10 +11,14 @@ use {
     },
     rocket::{
         http::RawStr,
-        request::FromFormValue
+        request::{
+            FromParam,
+            FromFormValue
+        }
     },
     diesel::{
         update,
+        delete,
         insert_into,
         PgConnection,
         AsExpression,
@@ -56,7 +61,7 @@ macro_rules! impl_from_form_value_for_id {
     };
 }
 
-#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
+#[derive(AsExpression, Serialize, Deserialize, Deref, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
 #[sql_type = "diesel::sql_types::Integer"]
 pub struct CategoryId(pub(super) i32);
 
@@ -83,18 +88,30 @@ impl Category {
     }
 }
 
-#[derive(AsExpression, Serialize, Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(AsExpression, Serialize, Deserialize, Deref, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
 #[sql_type = "diesel::sql_types::Integer"]
 pub struct QuestionId(pub(super) i32);
 
 impl_to_sql_for_id!(QuestionId);
 impl_from_form_value_for_id!(QuestionId);
 
+impl <'r> FromParam<'r> for QuestionId {
+    type Error = <i32 as FromParam<'r>>::Error;
+
+    fn from_param(param: &'r RawStr) -> Result<Self, Self::Error> {
+        i32::from_param(param).map(QuestionId)
+    }
+}
+
 impl Question {
     const PER_SET: usize = 100;
 
     pub fn id(&self) -> QuestionId {
         QuestionId(self.id)
+    }
+
+    pub fn category_id(&self) -> CategoryId {
+        CategoryId(self.category_id)
     }
 
     pub fn insert(new: &NewQuestion, conn: &PgConnection) -> QueryResult<Question> {
@@ -135,6 +152,35 @@ impl Question {
             ).collect::<Result<_, _>>()?;
 
         Ok(result)
+    }
+
+    pub fn load_all(conn: &PgConnection) -> QueryResult<Vec<Question>> {
+        use schema::questions::dsl::*;
+
+        questions.load(conn)
+    }
+
+    pub fn delete(qid: QuestionId, conn: &PgConnection) -> QueryResult<()> {
+        use schema::questions::dsl::*;
+
+        {
+            use schema::question_stats::dsl::*;
+
+            delete(question_stats.filter(question_id.eq(qid)))
+                .execute(conn)?;
+        }
+
+        delete(questions.filter(id.eq(qid)))
+            .execute(conn)
+            .map(drop)
+    }
+
+    pub fn update(qid: QuestionId, new: NewQuestion, conn: &PgConnection) -> QueryResult<Question> {
+        use schema::questions::dsl::*;
+
+        update(questions.filter(id.eq(qid)))
+            .set(new)
+            .get_result(conn)
     }
 
     pub fn stats(&self) -> Stats {
