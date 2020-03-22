@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Play</title>
     <script src="/content/static/js/joker.js"></script>
+    <script src="/content/static/js/timer.js"></script>
 </head>
-<body>
 <span>{{ category }}</span>
 <p>{{ question }}</p>
 <form method="post" action="/play/answer">
@@ -21,7 +21,10 @@
 {% if joker -%}
 <button id="joker" onclick="window.useJoker()">Joker einsetzen</button>
 {%- endif %}
-<span>Vergangene Zeit: {{ elapsed_secs }}</span>
+<p>Vergangene Zeit: <span id="timer"></span></p>
+<script>
+    window.startTimer({{ elapsed_secs }})
+</script>
 <p>Diese Frage wird zu {{ ratio }}% richtig beantwortet.</p>
 <a href="/play/end">Beenden</a>
 </body>
