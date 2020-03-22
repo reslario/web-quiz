@@ -6,12 +6,13 @@
     <title>Ende</title>
 </head>
 <body>
-<p>Du bist auf Platz #{{ placement }} gelandet.</p>
-<p>Die Top-3:</p>
+<h1>Du bist auf Platz #{{ placement }} gelandet.</h1>
+<h1>Die Top-3:</h1>
 <table>
     {{ table_macros::table_headers() }}
     {{ table_macros::score_rows(scores = top_three) }}
 </table>
+<h1>Deine Nachbarn:</h1>
 <table>
     {{ table_macros::table_headers() }}
     {{ table_macros::score_rows(scores = higher) }}
