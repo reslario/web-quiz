@@ -17,7 +17,10 @@ use {
 
 fn main() {
     dotenv::dotenv().ok();
+    rocket().launch();
+}
 
+fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/", routes![
             routing::index,
@@ -49,11 +52,31 @@ fn main() {
         .attach(models::db::DbConn::fairing())
         .manage(models::web::init_game_states())
         .manage(models::web::init_admin_sessions())
-        .launch();
 }
 
 fn templates() -> impl Fairing {
     Template::custom(|engines| {
-        crate::models::tera::configure(&mut engines.tera)
+        models::tera::configure(&mut engines.tera)
     })
+}
+
+#[cfg(test)]
+mod test {
+    use {
+        std::sync::Mutex,
+        once_cell::sync::Lazy,
+        diesel::{PgConnection, Connection}
+    };
+
+    pub static CONN: Lazy<Mutex<PgConnection>> = Lazy::new(|| {
+        dotenv::dotenv().ok();
+        Mutex::new(
+            PgConnection::establish(&std::env::var("DATABASE_URL").unwrap()).unwrap()
+        )
+    });
+
+    // re-export the rocket initialiser so tests (and only tests) can use it
+    pub fn rocket() -> rocket::Rocket {
+        super::rocket()
+    }
 }

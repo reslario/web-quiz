@@ -4,6 +4,6 @@ pub mod ops;
 mod conn;
 
 pub use {
-    conn::DbConn,
+    conn::{DbConn, Connection},
     ops::*
 };

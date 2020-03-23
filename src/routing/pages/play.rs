@@ -227,7 +227,7 @@ pub fn use_joker(mut game_state: SyncedGameState) -> Result<Json<Joker>, Status>
         })
         .map(Json)
         .map_err(|e| match e {
-            JokerError::AlreadyUsed => Status::Unauthorized,
+            JokerError::AlreadyUsed => Status::NotAcceptable,
             JokerError::NoQuestion => Status::InternalServerError
         })
 }
@@ -355,4 +355,108 @@ pub fn failed(end: EndGame) -> Template {
         points: end.game_state.points(),
         weighted_points: end.game_state.weighted_points()
     })
+}
+
+#[cfg(test)]
+mod test {
+    use {
+        super::*,
+        crate::{
+            test::rocket,
+            models::web::{
+                GameStates,
+                SyncedGameStates
+            }
+        },
+        rocket::{
+            local::Client,
+            http::{
+                Status,
+                ContentType
+            }
+        }
+    };
+
+    const SETTINGS_FORM: &str = "user=Tom&categories=1";
+
+    #[test]
+    fn session_is_set() {
+        let rocket = rocket();
+        let client = Client::new(rocket).unwrap();
+
+        let resp = client.post("/play/new_game")
+            .header(ContentType::Form)
+            .body(SETTINGS_FORM)
+            .dispatch();
+
+        let sess = resp
+            .cookies()
+            .into_iter()
+            .find(|cookie| cookie.name() == "session");
+
+        assert!(sess.is_some())
+    }
+
+    #[test]
+    fn game_state_is_set() {
+        let rocket = rocket();
+        let client = Client::new(rocket).unwrap();
+
+        client.post("/play/new_game")
+            .header(ContentType::Form)
+            .body(SETTINGS_FORM)
+            .dispatch();
+
+        let game_states = client
+            .rocket()
+            .state::<SyncedGameStates>()
+            .unwrap()
+            .lock()
+            .unwrap();
+
+        assert!(game_states.len() == 1)
+    }
+
+    #[test]
+    fn end_game_removes_state() {
+        let rocket = rocket();
+        let client = Client::new(rocket).unwrap();
+
+        client.post("/play/new_game")
+            .header(ContentType::Form)
+            .body(SETTINGS_FORM)
+            .dispatch();
+
+        client.get("/play/end")
+            .dispatch();
+
+        let game_states = client
+            .rocket()
+            .state::<SyncedGameStates>()
+            .unwrap()
+            .lock()
+            .unwrap();
+
+        assert!(game_states.is_empty())
+    }
+
+    #[test]
+    fn joker_can_only_be_used_once() {
+        let rocket = rocket();
+        let client = Client::new(rocket).unwrap();
+
+        client.post("/play/new_game")
+            .header(ContentType::Form)
+            .body(SETTINGS_FORM)
+            .dispatch();
+
+        client.get("/play/use_joker")
+            .dispatch();
+
+        let status = client.get("/play/use_joker")
+            .dispatch()
+            .status();
+
+        assert_eq!(status, Status::NotAcceptable)
+    }
 }

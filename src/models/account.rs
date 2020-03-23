@@ -1,12 +1,12 @@
 use {
     rocket::FromForm,
     std::num::NonZeroU8,
-    diesel::PgConnection,
     once_cell::sync::Lazy,
     rand::{thread_rng, Rng},
     argon2::{Config, Variant},
     crate::models::db::{
         AdminError,
+        Connection,
         models::{Admin, NewAdmin}
     }
 };
@@ -34,7 +34,7 @@ pub struct Credentials {
     pub password: String
 }
 
-pub fn register(cred: &Credentials, conn: &PgConnection) -> Result<(), Error> {
+pub fn register(cred: &Credentials, conn: &Connection) -> Result<(), Error> {
     hash(&cred.password, &salt())
         .map_err(Error::Hash)
         .and_then(|hash| Admin::insert(
@@ -47,7 +47,7 @@ pub fn register(cred: &Credentials, conn: &PgConnection) -> Result<(), Error> {
         ).map(drop)
 }
 
-pub fn verify(cred: &Credentials, conn: &PgConnection) -> Result<bool, Error> {
+pub fn verify(cred: &Credentials, conn: &Connection) -> Result<bool, Error> {
     Admin::named(&cred.name, conn)
         .map_err(|e| Error::Insert(AdminError::Query(e)))
         .map(|admin| admin
@@ -82,4 +82,32 @@ fn salt() -> String {
         .map(NonZeroU8::get)
         .map(char::from)
         .collect()
+}
+
+#[cfg(test)]
+mod test {
+    use {
+        super::*,
+        crate::test::CONN,
+        diesel::Connection
+    };
+
+    #[test]
+    fn registration() {
+        let credentials = Credentials {
+            name: "George".to_string(),
+            password: "please don't hack me :)".to_string()
+        };
+
+        let conn = CONN
+            .lock()
+            .unwrap();
+
+        let verified = conn.test_transaction(|| {
+            register(&credentials, &conn)?;
+            verify(&credentials, &conn)
+        });
+
+        assert!(verified)
+    }
 }

@@ -18,8 +18,8 @@ use {
     }
 };
 
-type GameStates = HashMap<Session, GameState>;
-type SyncedGameStates = Mutex<GameStates>;
+pub type GameStates = HashMap<Session, GameState>;
+pub type SyncedGameStates = Mutex<GameStates>;
 
 #[derive(Debug, Deref, DerefMut)]
 pub struct SyncedGameState<'a>(MutexGuardRefMut<'a, GameStates, GameState>);

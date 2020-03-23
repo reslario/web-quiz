@@ -353,3 +353,47 @@ impl_insert!(QuestionStats, NewQuestionStats, question_stats);
 impl_insert!(pub, Category, NewCategory, categories);
 
 impl_insert!(pub, Score, NewScore, scores);
+
+#[cfg(test)]
+mod test {
+    use {
+        super::*,
+        crate::test::CONN,
+        std::sync::Mutex,
+        once_cell::sync::Lazy,
+        diesel::{
+            PgConnection,
+            connection::Connection
+        }
+    };
+
+    #[test]
+    fn ensure_unique_admin_name() {
+        let conn = CONN
+            .lock()
+            .unwrap();
+        conn.test_transaction::<_, AdminError, _>(|| {
+            Admin::insert(
+                &NewAdmin {
+                    name: "oh no",
+                    password: "1"
+                },
+                &conn
+            )?;
+
+            let res = Admin::insert(
+                &NewAdmin {
+                    name: "oh no",
+                    password: "2"
+                },
+                &conn
+            );
+            match res.unwrap_err() {
+                AdminError::NameInUse => { /* good */ },
+                _ => panic!()
+            };
+
+            Ok(())
+        })
+    }
+}

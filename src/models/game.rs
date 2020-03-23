@@ -65,7 +65,6 @@ impl GameState {
         } else {
             Err(NextQuestionError::HasNotAnswered)
         }
-
     }
 
     pub fn current_question(&self) -> Option<(&Category, &Question)> {
@@ -244,4 +243,30 @@ fn update_stats(question: &Question, correct: bool, conn: &PgConnection) -> Resu
 pub fn new_game_state(user: String, categories: &[CategoryId], conn: &PgConnection) -> QueryResult<GameState> {
     Category::load_with_ids(&categories, &conn)
         .map(|cats| GameState::new(user, cats))
+}
+
+#[cfg(test)]
+mod test {
+    use {
+        super::*,
+        crate::test::CONN,
+        diesel::Connection,
+    };
+
+    #[test]
+    fn cannot_skip_question() {
+        let mut game_state = GameState::default();
+        let conn = CONN
+            .lock()
+            .unwrap();
+
+        // there is no question at this point, but that's irrelevant
+        game_state.next_question();
+
+        match game_state.next_question() {
+            Err(NextQuestionError::HasNotAnswered) => { /* good */ },
+            _ => panic!()
+        }
+
+    }
 }
