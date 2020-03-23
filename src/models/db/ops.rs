@@ -7,7 +7,8 @@ use {
     },
     crate::models::db::{
         schema,
-        models::*
+        models::*,
+        conn::Connection
     },
     rocket::{
         http::RawStr,
@@ -20,7 +21,6 @@ use {
         update,
         delete,
         insert_into,
-        PgConnection,
         AsExpression,
         RunQueryDsl,
         prelude::*,
@@ -73,13 +73,13 @@ impl Category {
         CategoryId(self.id)
     }
 
-    pub fn load_all(conn: &PgConnection) -> QueryResult<Vec<Category>> {
+    pub fn load_all(conn: &Connection) -> QueryResult<Vec<Category>> {
         use schema::categories::dsl::*;
 
         categories.load(conn)
     }
 
-    pub fn load_with_ids(ids: &[CategoryId], conn: &PgConnection) -> QueryResult<Vec<Category>> {
+    pub fn load_with_ids(ids: &[CategoryId], conn: &Connection) -> QueryResult<Vec<Category>> {
         use schema::categories::dsl::*;
 
         categories
@@ -114,7 +114,7 @@ impl Question {
         CategoryId(self.category_id)
     }
 
-    pub fn insert(new: &NewQuestion, conn: &PgConnection) -> QueryResult<Question> {
+    pub fn insert(new: &NewQuestion, conn: &Connection) -> QueryResult<Question> {
         use schema::questions::dsl::*;
 
         let res: Question = insert_into(questions)
@@ -133,7 +133,7 @@ impl Question {
         self.category_id == cat.id
     }
 
-    pub(in crate::models) fn load_set(categories: &[Category], answered: &[QuestionId], conn: &PgConnection) -> QueryResult<Vec<Question>> {
+    pub(in crate::models) fn load_set(categories: &[Category], answered: &[QuestionId], conn: &Connection) -> QueryResult<Vec<Question>> {
         use schema::questions::dsl::*;
 
         let per_category = (Self::PER_SET / categories.len()) as i64;
@@ -154,13 +154,13 @@ impl Question {
         Ok(result)
     }
 
-    pub fn load_all(conn: &PgConnection) -> QueryResult<Vec<Question>> {
+    pub fn load_all(conn: &Connection) -> QueryResult<Vec<Question>> {
         use schema::questions::dsl::*;
 
         questions.load(conn)
     }
 
-    pub fn delete(qid: QuestionId, conn: &PgConnection) -> QueryResult<()> {
+    pub fn delete(qid: QuestionId, conn: &Connection) -> QueryResult<()> {
         use schema::questions::dsl::*;
 
         {
@@ -175,7 +175,7 @@ impl Question {
             .map(drop)
     }
 
-    pub fn update(qid: QuestionId, new: NewQuestion, conn: &PgConnection) -> QueryResult<Question> {
+    pub fn update(qid: QuestionId, new: NewQuestion, conn: &Connection) -> QueryResult<Question> {
         use schema::questions::dsl::*;
 
         update(questions.filter(id.eq(qid)))
@@ -195,12 +195,12 @@ pub struct Stats<'a> {
 }
 
 impl <'a> Stats<'a> {
-    pub fn load(&self, conn: &PgConnection) -> QueryResult<QuestionStats> {
+    pub fn load(&self, conn: &Connection) -> QueryResult<QuestionStats> {
         QuestionStats::belonging_to(self.question)
             .get_result(conn)
     }
 
-    pub fn add_correct(&self, conn: &PgConnection) -> QueryResult<()> {
+    pub fn add_correct(&self, conn: &Connection) -> QueryResult<()> {
         use schema::question_stats::dsl::*;
 
         self.update_stat(
@@ -209,7 +209,7 @@ impl <'a> Stats<'a> {
         )
     }
 
-    pub fn add_incorrect(&self, conn: &PgConnection) -> QueryResult<()> {
+    pub fn add_incorrect(&self, conn: &Connection) -> QueryResult<()> {
         use schema::question_stats::dsl::*;
 
         self.update_stat(
@@ -218,7 +218,7 @@ impl <'a> Stats<'a> {
         )
     }
 
-    fn update_stat<V>(&self, expr: V, conn: &PgConnection) -> QueryResult<()>
+    fn update_stat<V>(&self, expr: V, conn: &Connection) -> QueryResult<()>
     where
         V: AsChangeset<Target = schema::question_stats::table>,
         <V as AsChangeset>::Changeset: QueryFragment<Pg>
@@ -243,7 +243,7 @@ impl QuestionStats {
 }
 
 impl Score {
-    pub fn top_three(conn: &PgConnection) -> QueryResult<Vec<Score>> {
+    pub fn top_three(conn: &Connection) -> QueryResult<Vec<Score>> {
         use schema::scores::dsl::*;
 
         scores
@@ -252,7 +252,7 @@ impl Score {
             .load(conn)
     }
 
-    pub fn placement(&self, conn: &PgConnection) -> QueryResult<u64> {
+    pub fn placement(&self, conn: &Connection) -> QueryResult<u64> {
         use schema::scores::dsl::*;
 
         scores
@@ -262,7 +262,7 @@ impl Score {
             .map(|count| count as u64 + 1)
     }
 
-    pub fn neighbours(&self, conn: &PgConnection) -> QueryResult<(Vec<Score>, Vec<Score>)> {
+    pub fn neighbours(&self, conn: &Connection) -> QueryResult<(Vec<Score>, Vec<Score>)> {
         use schema::scores::dsl::*;
 
         let higher = scores
@@ -288,7 +288,7 @@ pub enum AdminError {
 }
 
 impl Admin {
-    pub fn named(named: &str, conn: &PgConnection) -> QueryResult<Option<Admin>> {
+    pub fn named(named: &str, conn: &Connection) -> QueryResult<Option<Admin>> {
         use schema::admins::dsl::*;
 
         admins
@@ -297,7 +297,7 @@ impl Admin {
             .optional()
     }
 
-    pub fn insert(new: &NewAdmin, conn: &PgConnection) -> Result<Admin, AdminError> {
+    pub fn insert(new: &NewAdmin, conn: &Connection) -> Result<Admin, AdminError> {
         use schema::admins::dsl::*;
 
         let name_exists = Admin::named(new.name, conn)
@@ -334,7 +334,7 @@ impl <'a> NewQuestion<'a> {
 macro_rules! impl_insert {
     ($vis:vis, $name:ident, $new:ident, $table:ident) => {
         impl $name {
-            $vis fn insert(new: &$new, conn: &PgConnection) -> QueryResult<$name> {
+            $vis fn insert(new: &$new, conn: &Connection) -> QueryResult<$name> {
                 use schema::$table::dsl::*;
 
                 insert_into($table)
