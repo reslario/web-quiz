@@ -247,7 +247,7 @@ impl Score {
         use schema::scores::dsl::*;
 
         scores
-            .order(points.desc())
+            .order(weighted_points.desc())
             .limit(3)
             .load(conn)
     }
@@ -256,7 +256,7 @@ impl Score {
         use schema::scores::dsl::*;
 
         scores
-            .filter(points.gt(self.points))
+            .filter(weighted_points.gt(self.points))
             .count()
             .get_result::<i64>(conn)
             .map(|count| count as u64 + 1)
