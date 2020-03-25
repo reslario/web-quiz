@@ -5,7 +5,14 @@
     <title>Admin</title>
     <script src="/content/static/js/admin.js"></script>
 </head>
+<body>
 <div>{% block error %} {% endblock error %}</div>
+<h1>Admin hinzufügen</h1>
+<form method="post" action="/admin/register">
+    <input type="text" name="name" />
+    <input type="password" name="password" />
+    <button type="submit">Registrieren</button>
+</form>
 <h1>Frage hinzufügen</h1>
 <form id="addQuestion" method="post" action="/admin/add_question">
     <input type="text" name="question" placeholder="Frage" />
@@ -37,12 +44,5 @@
     </tr>
 </table>
 <script>window.fillForms()</script>
-
-<p>Admin hinzufügen</p>
-<form method="post" action="/admin/register">
-    <input type="text" name="name" />
-    <input type="password" name="password" />
-    <button type="submit">Registrieren</button>
-</form>
 </body>
 </html>
