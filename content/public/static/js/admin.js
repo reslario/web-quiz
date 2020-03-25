@@ -41,7 +41,8 @@ function tableRow(question, categories) {
     const addCell = (elm) => row.insertCell(-1).appendChild(elm);
     const addTextCell = (name, val) => addCell(textField(name, val));
 
-    addTextCell("id", question.id);
+    let id = addTextCell("id", question.id);
+    id.readOnly = true;
     addCell(categorySelect(question, categories));
     addTextCell("string", question.string);
     addTextCell("correct", question.correct);
