@@ -256,7 +256,7 @@ impl Score {
         use schema::scores::dsl::*;
 
         scores
-            .filter(weighted_points.gt(self.points))
+            .filter(weighted_points.gt(self.weighted_points))
             .count()
             .get_result::<i64>(conn)
             .map(|count| count as u64 + 1)
