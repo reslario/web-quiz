@@ -1,7 +1,7 @@
 [package]
 name = "quiz"
 version = "0.1.0"
-authors = ["reslario <simon.kunze2310@gmail.com>"]
+authors = ["reslario <reslario.code@gmail.com>"]
 edition = "2018"
 
 [dependencies]
